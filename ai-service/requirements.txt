@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+asyncpg
+pydantic
+sentence-transformers
+httpx
+python-dotenv
+
+# Development / testing
+pytest
