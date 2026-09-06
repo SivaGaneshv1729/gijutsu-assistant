@@ -54,8 +54,12 @@ OpenSearch: bootstrap checks failed
 
 ## LLM answers look like raw document text
 
-- `HF_TOKEN` is not set, so the engine uses the extractive fallback. Set a token and restart the AI service.
-- The HF free tier can return `503` while a model warms up; the service retries automatically up to three times.
+- Ollama is not running or the model is not pulled. Check:
+  ```powershell
+  docker exec -it manufacturing-engineering-intelligence-ollama-1 ollama list
+  ```
+  If empty, pull a model: `docker exec -it manufacturing-engineering-intelligence-ollama-1 ollama pull mistral`
+- Set `USE_LLM=false` to force extractive answers (top chunk only).
 
 ## Frontend preview works but every action fails
 
@@ -76,3 +80,11 @@ cd frontend
 # change the port in vite.config.ts (server.port) or:
 npx vite --port 4100
 ```
+
+## Neo4j connection errors
+
+- Neo4j may take 30+ seconds to start. Wait for the health check to pass:
+  ```powershell
+  docker-compose ps
+  ```
+- The knowledge graph features are optional. The platform works without Neo4j — graph features gracefully degrade.

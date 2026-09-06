@@ -37,11 +37,15 @@ Example: `POSTGRES_URL=jdbc:postgresql://localhost:5433/mei_platform`
 | `DB_POOL_MIN` | `1` | Minimum asyncpg pool connections |
 | `DB_POOL_MAX` | `10` | Maximum asyncpg pool connections |
 | `EMBEDDING_MODEL` | `all-MiniLM-L6-v2` | sentence-transformers embedding model (384-dim) |
-| `HF_TOKEN` | *(empty)* | Free Hugging Face Inference API token. Empty → extractive fallback |
-| `HF_MODEL` | `google/flan-t5-large` | Hugging Face text-generation model |
-| `HF_API_URL` | `https://api-inference.huggingface.co/models/<HF_MODEL>` | Override the inference endpoint |
+| `OLLAMA_BASE_URL` | `http://localhost:11434` | Ollama API base URL |
+| `OLLAMA_MODEL` | `mistral` | Local LLM model to use |
 | `USE_LLM` | `true` | Set `false` to force extractive answers |
 | `RAG_TOP_K` | `5` | Number of chunks retrieved per query |
+| `RERANK_ENABLED` | `true` | Enable cross-encoder reranking |
+| `RERANK_MODEL` | `cross-encoder/ms-marco-MiniLM-L-6-v2` | Cross-encoder model for reranking |
+| `NEO4J_URI` | `bolt://localhost:7687` | Neo4j connection URI |
+| `NEO4J_USER` | `neo4j` | Neo4j user |
+| `NEO4J_PASSWORD` | `password` | Neo4j password |
 
 ## Ingestion — Python
 
@@ -60,7 +64,7 @@ Example: `POSTGRES_URL=jdbc:postgresql://localhost:5433/mei_platform`
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `VITE_DEMO_MODE` | `true` | `false` removes the `demo`/`demo` login bypass |
-| `VITE_LLM_MODEL` | `google/flan-t5-large …` | Display label on the Settings page |
+| `VITE_LLM_MODEL` | `Mistral (local Ollama)` | Display label on the Settings page |
 
 ## Production checklist
 
@@ -68,4 +72,4 @@ Example: `POSTGRES_URL=jdbc:postgresql://localhost:5433/mei_platform`
 - Set `SEED_DEFAULT_USERS=false` and remove/rotate default passwords.
 - Set a strong `POSTGRES_PASSWORD` and `OPENSEARCH_PASSWORD`.
 - Set `VITE_DEMO_MODE=false`.
-- Configure `HF_TOKEN` for real LLM answers.
+- Pull an Ollama model on the host: `ollama pull mistral`.

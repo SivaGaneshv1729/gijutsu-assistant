@@ -10,10 +10,11 @@ This guide walks through launching the full MEI platform on a local machine.
 | Java JDK | 17+ | Used by the Spring Boot backend |
 | Python | 3.10+ | Used by the AI service and ingestion pipeline |
 | Node.js | 18+ | Used by the frontend |
+| Ollama | latest | Local LLM inference (no API keys needed) |
 
 > The backend ships an embedded Maven (3.9.6) under `backend/maven/`, so a separate Maven install is not required.
 
-## Step 1 — Start the databases
+## Step 1 — Start the databases + Ollama
 
 Open Docker Desktop, then from the project root:
 
@@ -21,11 +22,12 @@ Open Docker Desktop, then from the project root:
 docker-compose up -d
 ```
 
-This starts three containers:
+This starts four containers:
 
 - **PostgreSQL + pgvector** on host port `5433` (database `mei_platform`)
 - **OpenSearch** on `9200`
 - **Neo4j** on `7474` / `7687`
+- **Ollama** on `11434`
 
 Verify all containers are healthy:
 
@@ -33,7 +35,17 @@ Verify all containers are healthy:
 docker-compose ps
 ```
 
-## Step 2 — Apply the database migrations
+## Step 2 — Pull a local LLM model
+
+Once Ollama is running, pull a model:
+
+```powershell
+docker exec -it manufacturing-engineering-intelligence-ollama-1 ollama pull mistral
+```
+
+Other good options: `llama3.1`, `phi3`, `gemma2`. The model runs entirely on your machine — zero API cost.
+
+## Step 3 — Apply the database migrations
 
 The migrations create the `pgvector` extension, tables, and indexes:
 
@@ -45,7 +57,7 @@ Get-ChildItem database\migrations\*.sql | ForEach-Object {
 
 You should see `CREATE EXTENSION`, `CREATE TABLE`, and `CREATE INDEX` confirmations.
 
-## Step 3 — Ingest the knowledge base
+## Step 4 — Ingest the knowledge base
 
 The ingestion pipeline parses PDF, DOCX, and HTML files into semantically chunked, vectorized entries.
 
@@ -65,7 +77,7 @@ Notes:
 - The pipeline **skips** documents that were already ingested (matched by filename).
 - A second CLI argument sets the access level for ingested documents: `python ingestion\pipeline.py <dir> engineer`.
 
-## Step 4 — Start the AI engine
+## Step 5 — Start the AI engine
 
 ```powershell
 cd ai-service
@@ -79,22 +91,9 @@ The AI service:
 
 - Loads the `all-MiniLM-L6-v2` embedding model on startup.
 - Maintains an async PostgreSQL connection pool.
-- Generates answers with the free Hugging Face Inference API (see "Configure the LLM" below).
+- Generates answers via the local Ollama LLM — no external API calls.
 
-### Configure the LLM (free)
-
-1. Create a free token at <https://huggingface.co/settings/tokens>.
-2. Set it in the environment used by the AI service:
-
-```powershell
-$env:HF_TOKEN = "hf_..."
-```
-
-3. Restart the AI service.
-
-Without a token the engine returns the top matching document chunk instead (extractive fallback), so the platform still works end-to-end.
-
-## Step 5 — Start the API gateway
+## Step 6 — Start the API gateway
 
 ```powershell
 cd backend
@@ -113,7 +112,7 @@ On first startup the gateway:
 | `manager` | `password123` | MANAGER |
 | `operator` | `password123` | OPERATOR |
 
-## Step 6 — Start the frontend
+## Step 7 — Start the frontend
 
 ```powershell
 cd frontend
@@ -133,4 +132,4 @@ After all services are up:
 2. `http://localhost:8000/health` → `{"status":"ok"}`
 3. `http://localhost:4000` → log in as `engineer` / `password123`
 4. Ask *"What is alarm E101?"* → expect an answer with source citations
-5. Settings page → "Check health now" → both services online
+5. Settings page → "Check health now" → all services online
