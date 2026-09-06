@@ -1,0 +1,9 @@
+PyMuPDF==1.23.25
+python-docx==1.1.0
+beautifulsoup4==4.12.3
+openpyxl==3.1.2
+pandas==2.2.1
+pydantic==2.6.3
+tiktoken==0.6.0
+sentence-transformers
+psycopg2-binary
