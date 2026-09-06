@@ -10,7 +10,7 @@ The platform is built on a modern microservices architecture:
 2. **API Gateway (`/backend`)**: A Java Spring Boot application running on port `8080`. Acts as the primary entry point, handling JWT Security, Role-Based Access Control (RBAC), and proxying authorized queries to the AI Engine.
 3. **AI Engine (`/ai-service`)**: A Python FastAPI application running on port `8000`. Uses HuggingFace's `sentence-transformers` (`all-MiniLM-L6-v2`) to embed user queries and execute vector math against the database.
 4. **Ingestion Pipeline (`/ingestion`)**: A Python-based ETL pipeline that reads technical PDFs, semantically chunks them, generates 384-dimensional embeddings, and inserts them into PostgreSQL.
-5. **Infrastructure (`docker-compose.yml`)**: Containerized databases including PostgreSQL (with `pgvector` enabled on port `5433`), OpenSearch, and Neo4j.
+5. **Infrastructure (`docker-compose.yml`)**: Containerized databases including PostgreSQL (with `pgvector` enabled on port `5433`), OpenSearch, Neo4j, and **Ollama** (local LLM on port `11434`).
 
 ## 📁 Repository Structure
 
@@ -47,6 +47,7 @@ Full documentation lives in [`docs/`](docs/README.md):
 - **Java 17** (or use the embedded Maven wrapper)
 - **Python 3.10+** (For AI Service and Ingestion)
 - **Node.js 18+** (For Frontend)
+- **Ollama** (Included in Docker Compose — local LLM, zero cost)
 
 ## 🚀 Setup & Installation
 
@@ -55,15 +56,21 @@ Open Docker Desktop, then run the following in the project root:
 ```bash
 docker-compose up -d
 ```
-*Note: Postgres is mapped to `localhost:5433` to prevent conflicts with other local databases.*
+*Note: Postgres is mapped to `localhost:5433` to prevent conflicts with other local databases. Ollama runs on `localhost:11434`.*
 
-### 2. Initialize the Database Schema
+### 2. Pull a Local LLM Model
+```bash
+docker exec -it manufacturing-engineering-intelligence-ollama-1 ollama pull mistral
+```
+*This runs entirely on your machine — no API keys, no external billing, zero cost.*
+
+### 3. Initialize the Database Schema
 Apply the SQL migration to create the `pgvector` extension and the necessary tables:
 ```bash
 Get-Content database\migrations\V1__init_schema.sql | docker exec -i manufacturing-engineering-intelligence-postgres-1 psql -U postgres -d mei_platform
 ```
 
-### 3. Run the Ingestion Pipeline
+### 4. Run the Ingestion Pipeline
 To populate the database with technical manuals (e.g., the E101 Alarm guide and any PDF/DOCX/HTML you add):
 ```bash
 # In the project root
@@ -74,7 +81,7 @@ python ingestion/pipeline.py knowledge-base/public
 ```
 The pipeline parses `.pdf`, `.docx`, and `.html` files, semantically chunks them, generates 384-dimensional embeddings, and inserts them into PostgreSQL. Already-ingested documents are automatically skipped.
 
-### 4. Start the AI Engine (Python)
+### 5. Start the AI Engine (Python)
 ```bash
 cd ai-service
 python -m venv venv
@@ -83,14 +90,14 @@ pip install -r requirements.txt
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-### 5. Start the API Gateway (Java)
+### 6. Start the API Gateway (Java)
 ```bash
 cd backend
 # Use your local maven or the embedded wrapper
 mvn spring-boot:run
 ```
 
-### 6. Start the Frontend (React)
+### 7. Start the Frontend (React)
 ```bash
 cd frontend
 npm install
@@ -113,14 +120,15 @@ Self-registration through the API always creates `OPERATOR` accounts. Higher-pri
 
 *(Note: There is a temporary "Demo Mode" bypass in the UI where entering `demo` / `demo` will allow you to view the Dashboard design if the backend databases are offline. Disable it by setting `VITE_DEMO_MODE=false` in `frontend/.env`).*
 
-## 🧠 LLM (free — Hugging Face Inference API)
+## 🧠 LLM (100% local — Ollama)
 
-The AI service generates grounded answers using Hugging Face's **free Inference API** (no OpenAI billing required):
+The AI service generates grounded answers using **Ollama** running entirely on your machine — no API keys, no external billing, zero cost.
 
-1. Create a free token at https://huggingface.co/settings/tokens
-2. Set `HF_TOKEN` in the environment (or `ai-service/.env`)
-3. Default model is `google/flan-t5-large`; override with `HF_MODEL`
-4. If `HF_TOKEN` is empty, the engine gracefully falls back to returning the top matching document chunk.
+1. Install Ollama: https://ollama.com
+2. Pull a model: `ollama pull mistral` (or `llama3.1`, `phi3`, etc.)
+3. The Docker Compose stack includes an Ollama container (port `11434`)
+4. Default model is `mistral`; override with `OLLAMA_MODEL`
+5. If Ollama is unreachable, the engine gracefully falls back to returning the top matching document chunk
 
 ## 🛠️ API Endpoints
 
@@ -158,5 +166,5 @@ Get-ChildItem database\migrations\*.sql | ForEach-Object {
 ## 📝 Technologies Used
 - **Frontend**: React, TypeScript, Vite, Tailwind CSS, Lucide React, react-markdown
 - **Backend**: Java 17, Spring Boot 3, Spring Security (JWT)
-- **AI/ML**: Python, FastAPI, asyncpg (connection pooling), sentence-transformers, Hugging Face Inference API
+- **AI/ML**: Python, FastAPI, asyncpg (connection pooling), sentence-transformers, Ollama (local LLM), Neo4j (knowledge graph)
 - **Database**: PostgreSQL 15 + pgvector (HNSW index), Docker
