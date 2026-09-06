@@ -1,17 +1,19 @@
 import asyncio
 import logging
 import os
+import time
 from typing import List, Optional
 
 import asyncpg
-import httpx
 from sentence_transformers import SentenceTransformer
 
+from app.llm.client import generate_rag_answer
 from app.rag.prompting import build_context, build_prompt, extractive_answer, no_results_answer
+from app.reranking.cross_encoder import get_reranker
+from app.evaluation.metrics import get_evaluator
 
 logger = logging.getLogger(__name__)
 
-# Database configuration (overridable via environment variables)
 DB_USER = os.getenv("POSTGRES_USER", "postgres")
 DB_PASSWORD = os.getenv("POSTGRES_PASSWORD", "postgres")
 DB_HOST = os.getenv("POSTGRES_HOST", "localhost")
@@ -20,17 +22,9 @@ DB_NAME = os.getenv("POSTGRES_DB", "mei_platform")
 DB_POOL_MIN = int(os.getenv("DB_POOL_MIN", "1"))
 DB_POOL_MAX = int(os.getenv("DB_POOL_MAX", "10"))
 
-# Embedding model configuration
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "all-MiniLM-L6-v2")
-
-# LLM configuration (free Hugging Face Inference API)
-HF_TOKEN = os.getenv("HF_TOKEN", "")
-HF_MODEL = os.getenv("HF_MODEL", "google/flan-t5-large")
-HF_API_URL = os.getenv("HF_API_URL", f"https://api-inference.huggingface.co/models/{HF_MODEL}")
-USE_LLM = os.getenv("USE_LLM", "true").lower() in ("1", "true", "yes")
-
-# Retrieval configuration
-TOP_K = int(os.getenv("RAG_TOP_K", "5"))
+RAG_TOP_K = int(os.getenv("RAG_TOP_K", "5"))
+RERANK_ENABLED = os.getenv("RERANK_ENABLED", "true").lower() in ("1", "true", "yes")
 
 _pool: Optional[asyncpg.Pool] = None
 _model: Optional[SentenceTransformer] = None
@@ -66,7 +60,7 @@ def get_model() -> SentenceTransformer:
     return _model
 
 
-async def retrieve(query: str, access_level: str, top_k: int = TOP_K) -> List[dict]:
+async def retrieve(query: str, access_level: str, top_k: int = RAG_TOP_K) -> List[dict]:
     """Execute a vector similarity search against pgvector with RBAC filtering."""
     model = get_model()
     query_embedding = model.encode(query).tolist()
@@ -74,8 +68,8 @@ async def retrieve(query: str, access_level: str, top_k: int = TOP_K) -> List[di
 
     pool = await get_pool()
 
-    # Filter: PUBLIC documents are visible to everyone; otherwise the document's
-    # access_level must match the caller's role (case-insensitive).
+    fetch_k = top_k * 2 if RERANK_ENABLED else top_k
+
     sql = """
         SELECT dc.id, dc.text_content, d.name, d.access_level
         FROM document_chunks dc
@@ -86,9 +80,9 @@ async def retrieve(query: str, access_level: str, top_k: int = TOP_K) -> List[di
         LIMIT $3
     """
 
-    rows = await pool.fetch(sql, embedding_str, access_level or "PUBLIC", top_k)
+    rows = await pool.fetch(sql, embedding_str, access_level or "PUBLIC", fetch_k)
 
-    return [
+    chunks = [
         {
             "id": str(row["id"]),
             "text_content": row["text_content"],
@@ -98,69 +92,31 @@ async def retrieve(query: str, access_level: str, top_k: int = TOP_K) -> List[di
         for row in rows
     ]
 
-
-async def generate_answer(query: str, citations: List[dict]) -> str:
-    """Generate a grounded answer using the free Hugging Face Inference API."""
-    if not citations:
-        return no_results_answer()
-
-    if not USE_LLM or not HF_TOKEN:
-        logger.warning("USE_LLM disabled or HF_TOKEN not set; returning extractive answer")
-        return extractive_answer(citations)
-
-    prompt = build_prompt(query, citations)
-
-    payload = {
-        "inputs": prompt,
-        "parameters": {
-            "max_new_tokens": 350,
-            "temperature": 0.2,
-            "do_sample": False,
-        },
-    }
-    headers = {"Authorization": f"Bearer {HF_TOKEN}", "Content-Type": "application/json"}
-
-    for attempt in range(3):
+    if RERANK_ENABLED and len(chunks) > top_k:
         try:
-            async with httpx.AsyncClient(timeout=90.0) as client:
-                resp = await client.post(HF_API_URL, json=payload, headers=headers)
-            if resp.status_code == 200:
-                data = resp.json()
-                if isinstance(data, list) and data:
-                    generated = data[0].get("generated_text", "")
-                elif isinstance(data, dict):
-                    generated = data.get("generated_text", "")
-                else:
-                    generated = ""
-                answer = generated.replace(prompt, "").strip()
-                return answer or "I could not generate an answer at this time."
-            if resp.status_code in (500, 503):
-                await asyncio.sleep(2 * (attempt + 1))
-                continue
-            logger.error("HF Inference API error %s: %s", resp.status_code, resp.text[:500])
-            break
+            reranker = get_reranker()
+            chunks = await reranker.async_rerank(query, chunks, top_k=top_k)
         except Exception as e:
-            logger.exception("Hugging Face inference request failed")
-            if attempt < 2:
-                await asyncio.sleep(2)
-            else:
-                return f"An error occurred while contacting the language model: {e}"
+            logger.warning("Reranker failed, using raw retrieval: %s", e)
+            chunks = chunks[:top_k]
 
-    top = citations[0]
-    return (
-        "I could not generate a full answer right now. Here is what I found in the knowledge base:\n\n"
-        f"**Source:** {top['name']}\n{top['text_content']}"
-    )
+    return chunks[:top_k]
 
 
 async def retrieve_and_answer(query: str, access_level: str) -> dict:
     """Full RAG pipeline: embed query, retrieve relevant chunks, generate answer."""
+    start_time = time.time()
+
     try:
         citations = await retrieve(query, access_level)
     except Exception as e:
         logger.exception("Retrieval failed")
         return {"answer": f"Database error: {e}", "citations": []}
 
-    answer = await generate_answer(query, citations)
+    answer = await generate_rag_answer(query, citations)
+
+    latency_ms = (time.time() - start_time) * 1000
+    evaluator = get_evaluator()
+    evaluator.log_query(query, answer, citations, latency_ms)
 
     return {"answer": answer, "citations": citations}
