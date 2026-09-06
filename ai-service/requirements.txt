@@ -5,6 +5,7 @@ pydantic
 sentence-transformers
 httpx
 python-dotenv
+neo4j
 
 # Development / testing
 pytest
