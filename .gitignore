@@ -1,0 +1,52 @@
+# ---------- Python ----------
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments (very large, often >1 GB)
+venv/
+.venv/
+venv_ingest/
+
+# ---------- Node / Frontend ----------
+node_modules/
+dist/
+build/
+*.local
+
+# ---------- Java / Maven ----------
+target/
+*.class
+*.jar
+*.war
+*.ear
+
+# Embedded Maven distribution (third-party binary, not source)
+backend/maven/
+backend/apache-maven.zip
+
+# ---------- Environment ----------
+.env
+.env.*
+!.env.example
+
+# ---------- IDE / Editor ----------
+.idea/
+.vscode/
+*.iml
+
+# ---------- OS ----------
+.DS_Store
+Thumbs.db
+
+# ---------- Logs ----------
+*.log
+logs/
+
+# ---------- Docker ----------
+postgres_data/
+opensearch_data/
+neo4j_data/
