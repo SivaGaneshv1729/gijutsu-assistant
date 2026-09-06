@@ -7,7 +7,7 @@ interface UserInfo {
   role: string;
 }
 
-const LLM_MODEL = import.meta.env.VITE_LLM_MODEL || 'google/flan-t5-large (free Hugging Face Inference API)';
+const LLM_MODEL = import.meta.env.VITE_LLM_MODEL || 'Mistral (local Ollama — zero cost)';
 
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
