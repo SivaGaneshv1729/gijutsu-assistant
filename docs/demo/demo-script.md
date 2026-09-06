@@ -10,9 +10,9 @@ A guided walkthrough of the MEI Platform. Designed for a 10–15 minute presenta
    .\venv_ingest\Scripts\activate
    python ingestion\pipeline.py knowledge-base\public
    ```
-3. A HF token set so answers look intelligent, not extractive:
+3. Ollama model pulled and running:
    ```powershell
-   $env:HF_TOKEN = "hf_..."
+   docker exec -it manufacturing-engineering-intelligence-ollama-1 ollama pull mistral
    ```
 4. Both health checks green:
    - `http://localhost:8080/actuator/health` → `UP`
@@ -70,13 +70,13 @@ Log out and log in as `operator` / `password123`. Ask the same question and, whe
 ## 6. Close
 
 - Add a document live (drop a PDF into `knowledge-base/public`, re-run the pipeline, refresh Knowledge Base, ask about it).
-- Recap: free stack (PostgreSQL/pgvector, sentence-transformers, Hugging Face free tier) — zero licensing cost.
+- Recap: 100% free stack — PostgreSQL/pgvector, sentence-transformers, Ollama — zero licensing cost, zero API bills.
 
 ## Demo pitfall card
 
 | Problem | Fix |
 |---------|-----|
 | "could not find any relevant information" | Ingestion not run or document access level != role |
-| Raw document text answers | `HF_TOKEN` unset → set it and restart AI service |
-| 503 from HF in logs | Model warming up; automatic retry kicks in |
+| Raw document text answers | Ollama model not pulled or not running — check with `docker exec -it manufacturing-engineering-intelligence-ollama-1 ollama list` |
+| Slow responses | First inference call may be slow as model loads into memory; subsequent calls are fast |
 | Everything works but feels static | Add 2–3 varied documents (PDF + DOCX + HTML) before the demo |

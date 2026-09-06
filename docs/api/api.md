@@ -122,7 +122,7 @@ Public Spring Boot health. Also exposes `info` and `metrics`.
 ## AI Service (Internal)
 
 ### `GET /health`
-- `200 OK` → `{ "status": "ok" }`
+- `200 OK` → `{"status": "ok"}`
 
 ### `POST /api/v1/query`
 Internal retrieval + answer endpoint, normally called only by the gateway. Does its own RBAC filtering.
@@ -151,9 +151,41 @@ Response (`200 OK`):
 ```
 
 Behavior:
-- Embeds the query with `all-MiniLM-L6-v2`, searches pgvector (`ORDER BY embedding <-> $1 LIMIT 5`), filtering on `access_level` (`PUBLIC` or exact role match).
-- Answers via the free Hugging Face Inference API (`google/flan-t5-large` by default). Without `HF_TOKEN`, returns the top matched chunk (extractive fallback).
+- Embeds the query with `all-MiniLM-L6-v2`, searches pgvector, filtering on `access_level`.
+- Answers via the local Ollama LLM (`mistral` by default). Without Ollama running, returns the top matched chunk (extractive fallback).
 - Validation failure (empty query) → `422 Unprocessable Entity`.
+
+### `GET /api/v1/llm/health`
+Check if Ollama is reachable.
+- `200 OK` → `{"status": "ok", "provider": "ollama"}`
+
+### `GET /api/v1/llm/models`
+List available Ollama models.
+- `200 OK` → `{"models": ["mistral", "llama3.1", ...]}`
+
+### `GET /api/v1/graph/stats`
+Neo4j knowledge graph statistics (nodes + relationships).
+- `200 OK` → `{"documents": 5, "entities": 42, "chunks": 210, "relationships": 156}`
+
+### `GET /api/v1/graph/related?doc_name=...`
+Find documents related through shared entities.
+- `200 OK` → `{"related_documents": [...]}`
+
+### `GET /api/v1/graph/entity?entity=...`
+Get all documents mentioning a specific entity.
+- `200 OK` → `{"documents": [...]}`
+
+### `GET /api/v1/evaluation/summary`
+Query performance metrics (latency, citation density).
+- `200 OK` → `{"total_queries": 15, "avg_latency_ms": 1200, ...}`
+
+### `GET /api/v1/evaluation/history?limit=50`
+Recent query history.
+- `200 OK` → `{"history": [...]}`
+
+### `GET /api/v1/embeddings/info`
+Embedding model details.
+- `200 OK` → `{"model": "all-MiniLM-L6-v2", "dimension": 384, "provider": "sentence-transformers (local)"}`
 
 ---
 
