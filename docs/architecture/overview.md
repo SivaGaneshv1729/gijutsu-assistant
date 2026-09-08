@@ -21,9 +21,12 @@ The MEI platform is a microservices-style application with a clear separation be
                              │  │   AI Engine      │  Python / FastAPI  (port 8000)
                              │  │   embed + search │
                              │  │   answer (LLM)   │
-                             │  └────────┬─────────┘
-                             │           │  pgvector query (L2 distance, RBAC filter)
-                             ▼           ▼
+                             │  └──┬─────┬────┬────┘
+                             │     │     │    │
+                             │     │     │    └── Ollama (port 11434) — local LLM
+                             │     │     └── Neo4j (port 7687) — knowledge graph
+                             │     │  pgvector query (L2 distance, RBAC filter)
+                             ▼     ▼
                    ┌────────────────────────────┐
                    │  PostgreSQL 15 + pgvector  │  (port 5433)
                    │  users · documents ·       │
@@ -48,8 +51,9 @@ POST /api/rag/query                     frontend → gateway (JWT in Authorizati
 POST /api/v1/query {query, access_level}   gateway → AI service
    │  1. embed query with all-MiniLM-L6-v2 (384-dim)
    │  2. pgvector query: WHERE access_level matches ORDER BY embedding <-> $1 LIMIT 5
-   │  3. build prompt: context + question
-   │  4. call free Hugging Face Inference API (or extractive fallback)
+   │  3. (optional) cross-encoder rerank for precision
+   │  4. build prompt: context + question
+   │  5. call local Ollama LLM (or extractive fallback)
    ▼
 {answer, citations[]}  →  gateway wraps in {data: {...}}  →  frontend renders
 ```
@@ -76,17 +80,18 @@ GET /actuator/health     → public, Spring Boot actuator
 GET /api/system/health   → gateway → {status, database}
 GET /api/system/ai-health→ gateway → AI service /health → {status}
 GET /health              → AI service liveness
+GET /api/v1/llm/health   → AI service → Ollama connectivity
 ```
 
-## Infrastructure that is not yet wired up
+## Infrastructure
 
-- **OpenSearch (9200)** and **Neo4j (7474/7687)** run in Docker but are not called by any service.
-  - OpenSearch is planned for hybrid / BM25 keyword retrieval (see ADR-002).
-  - Neo4j is planned for the alarm/component knowledge graph (see ADR-004).
-- The LLM is free via the Hugging Face Inference API; no local GPU is required.
+- **PostgreSQL + pgvector (5433)**: Vector storage, document metadata, RBAC filtering.
+- **Ollama (11434)**: Local LLM inference. No API keys, no external billing. Pull a model with `ollama pull mistral`.
+- **Neo4j (7474/7687)**: Knowledge graph for entity relationships, document linking, and related-document discovery.
+- **OpenSearch (9200)**: Hybrid BM25 keyword search (optional, reserved for future use).
 
 ## Deployment notes
 
 - Each service is independently replaceable/scalable.
-- The frontend, gateway, and AI service can be containerized using standard images; `docker-compose.yml` currently provisions only the databases.
+- The frontend, gateway, and AI service can be containerized using standard images; `docker-compose.yml` provisions all databases + Ollama.
 - SQL migrations are applied manually (see `docs/setup/quickstart.md`) and must be run before starting the backend so the `documents` tables exist.
