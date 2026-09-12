@@ -1,97 +1,60 @@
-import { NavLink, useNavigate } from 'react-router-dom';
-import { LogOut, Bot, Database, Settings, Factory, MessageSquare } from 'lucide-react';
-
-const navItems = [
-  { to: '/dashboard', label: 'AI Assistant', icon: Bot, end: true },
-  { to: '/dashboard/knowledge', label: 'Knowledge Base', icon: Database, end: false },
-  { to: '/dashboard/settings', label: 'Settings', icon: Settings, end: false },
-];
+import { Link, useLocation } from 'react-router-dom';
+import { LayoutDashboard, MessageSquare, Database, Settings, LogOut } from 'lucide-react';
 
 export default function Sidebar() {
-  const navigate = useNavigate();
+  const location = useLocation();
+
+  const menu = [
+    { name: 'Dashboard', path: '/', icon: LayoutDashboard },
+    { name: 'Copilot', path: '/copilot', icon: MessageSquare },
+    { name: 'Knowledge Base', path: '/knowledge', icon: Database },
+    { name: 'Settings', path: '/settings', icon: Settings },
+  ];
 
   const handleLogout = () => {
     localStorage.removeItem('token');
-    navigate('/login');
+    window.location.href = '/login';
   };
 
   return (
-    <aside className="w-64 bg-slate-900 text-slate-300 hidden md:flex flex-col flex-shrink-0">
-      <div className="p-6 flex items-center gap-3 bg-slate-950/50">
-        <Factory className="h-8 w-8 text-indigo-500" />
-        <span className="font-bold text-white tracking-wide">MEI Platform</span>
+    <div className="w-64 h-screen glass-panel flex flex-col fixed left-0 top-0 z-10">
+      <div className="p-6">
+        <h1 className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+          SHIBAURA
+        </h1>
+        <p className="text-[10px] text-textMuted tracking-widest font-bold mt-1 uppercase">Engineering Intelligence</p>
       </div>
 
-      <nav className="flex-1 px-4 py-6 space-y-2">
-        {navItems.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            end={item.end}
-            className={({ isActive }) =>
-              `flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-colors ${
-                isActive
-                  ? 'bg-indigo-600/10 text-indigo-400 border border-indigo-500/20'
-                  : 'hover:bg-slate-800'
-              }`
-            }
-          >
-            <item.icon className="h-5 w-5" />
-            {item.label}
-          </NavLink>
-        ))}
+      <nav className="flex-1 px-4 space-y-2 mt-4">
+        {menu.map((item) => {
+          const Icon = item.icon;
+          const isActive = location.pathname === item.path;
+          return (
+            <Link
+              key={item.name}
+              to={item.path}
+              className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${
+                isActive 
+                  ? 'bg-primary/20 text-primary border border-primary/30 shadow-[0_0_15px_rgba(59,130,246,0.15)]' 
+                  : 'text-textMuted hover:bg-white/5 hover:text-text'
+              }`}
+            >
+              <Icon size={20} />
+              <span className="font-medium text-sm">{item.name}</span>
+            </Link>
+          );
+        })}
       </nav>
 
-      <div className="p-4 border-t border-slate-800">
-        <button
+      <div className="p-4 border-t border-white/10">
+        <button 
           onClick={handleLogout}
-          className="flex items-center gap-3 px-4 py-3 w-full hover:bg-slate-800 text-slate-400 hover:text-white rounded-lg font-medium transition-colors"
+          className="flex items-center gap-3 px-4 py-3 w-full rounded-lg text-textMuted hover:bg-red-500/10 hover:text-red-400 transition-colors"
         >
-          <LogOut className="h-5 w-5" />
-          Sign Out
+          <LogOut size={20} />
+          <span className="font-medium text-sm">Logout</span>
         </button>
       </div>
-    </aside>
-  );
-}
-
-export function MobileHeader() {
-  const navigate = useNavigate();
-
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    navigate('/login');
-  };
-
-  return (
-    <header className="md:hidden bg-slate-900 text-white p-4 flex items-center justify-between shadow-md">
-      <NavLink to="/dashboard" className="flex items-center gap-2">
-        <Factory className="h-6 w-6 text-indigo-400" />
-        <span className="font-bold">MEI</span>
-      </NavLink>
-      <div className="flex items-center gap-2">
-        <NavLink to="/dashboard/knowledge" className="p-2" title="Knowledge Base">
-          <Database className="h-5 w-5" />
-        </NavLink>
-        <NavLink to="/dashboard/settings" className="p-2" title="Settings">
-          <Settings className="h-5 w-5" />
-        </NavLink>
-        <button onClick={handleLogout} className="p-2" title="Sign out">
-          <LogOut className="h-5 w-5" />
-        </button>
-      </div>
-    </header>
-  );
-}
-
-export function MobileAssistantHint() {
-  return (
-    <NavLink
-      to="/dashboard"
-      className="md:hidden fixed bottom-20 right-4 z-20 p-3 rounded-full bg-indigo-600 text-white shadow-lg"
-      title="Open AI Assistant"
-    >
-      <MessageSquare className="h-5 w-5" />
-    </NavLink>
+    </div>
   );
 }
