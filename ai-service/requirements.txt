@@ -1,11 +1,10 @@
-fastapi
-uvicorn
-asyncpg
-pydantic
-sentence-transformers
-httpx
-python-dotenv
-neo4j
-
-# Development / testing
-pytest
+fastapi==0.110.0
+uvicorn==0.27.1
+pydantic==2.6.3
+sentence-transformers==2.5.1
+sqlalchemy==2.0.28
+psycopg2-binary==2.9.9
+pgvector==0.2.5
+opensearch-py==2.4.2
+python-dotenv==1.0.1
+neo4j==5.17.0
