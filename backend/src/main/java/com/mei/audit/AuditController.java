@@ -2,6 +2,7 @@ package com.mei.audit;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -15,11 +16,13 @@ public class AuditController {
     private final AuditService auditService;
 
     @GetMapping("/logs")
+    @PreAuthorize("hasAnyRole('ADMIN')")
     public ResponseEntity<List<AuditLog>> getLogs(@RequestParam(defaultValue = "50") int limit) {
         return ResponseEntity.ok(auditService.getRecentLogs(limit));
     }
 
     @GetMapping("/stats")
+    @PreAuthorize("hasAnyRole('ADMIN')")
     public ResponseEntity<Map<String, Object>> getStats() {
         return ResponseEntity.ok(auditService.getAuditStats());
     }

@@ -23,7 +23,7 @@ import java.util.Optional;
 @Service
 public class RagService {
 
-    private static final String QUERY_PATH = "/api/v1/query";
+    private static final String QUERY_PATH = "/api/rag/query";
 
     private final RestTemplate restTemplate;
     private final String aiServiceUrl;
