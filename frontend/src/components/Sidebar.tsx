@@ -1,15 +1,27 @@
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, MessageSquare, Database, Settings, LogOut } from 'lucide-react';
+import { MessageSquare, UploadCloud, LogOut } from 'lucide-react';
 
 export default function Sidebar() {
   const location = useLocation();
 
+  const token = localStorage.getItem('token');
+  let role = '';
+  if (token) {
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      role = payload.role || '';
+    } catch (e) {
+      console.error('Failed to parse token', e);
+    }
+  }
+
   const menu = [
-    { name: 'Dashboard', path: '/', icon: LayoutDashboard },
-    { name: 'Copilot', path: '/copilot', icon: MessageSquare },
-    { name: 'Knowledge Base', path: '/knowledge', icon: Database },
-    { name: 'Settings', path: '/settings', icon: Settings },
+    { name: 'Copilot', path: '/', icon: MessageSquare },
   ];
+
+  if (role === 'ADMIN') {
+    menu.push({ name: 'Admin Panel', path: '/admin', icon: UploadCloud });
+  }
 
   const handleLogout = () => {
     localStorage.removeItem('token');

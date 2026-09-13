@@ -2,8 +2,8 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import Layout from './components/Layout';
 import Login from './pages/Login';
-import Dashboard from './pages/Dashboard';
 import Copilot from './pages/Copilot';
+import AdminPanel from './pages/AdminPanel';
 
 const queryClient = new QueryClient();
 
@@ -25,12 +25,12 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/" element={
             <ProtectedRoute>
-              <Dashboard />
+              <Copilot />
             </ProtectedRoute>
           } />
-          <Route path="/copilot" element={
+          <Route path="/admin" element={
             <ProtectedRoute>
-              <Copilot />
+              <AdminPanel />
             </ProtectedRoute>
           } />
           <Route path="*" element={<Navigate to="/" replace />} />

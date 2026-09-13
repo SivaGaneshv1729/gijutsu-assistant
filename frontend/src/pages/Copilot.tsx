@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Send, Bot, User, FileText, ChevronDown, ChevronUp, ShieldAlert } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
 
 interface Message {
   id: string;
@@ -51,9 +52,9 @@ export default function Copilot() {
       const aiMsg: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: data.answer,
-        confidence: data.confidence,
-        citations: data.citations
+        content: data.data.answer,
+        confidence: data.data.confidence,
+        citations: data.data.citations
       };
       
       setMessages(prev => [...prev, aiMsg]);
@@ -93,12 +94,16 @@ export default function Copilot() {
               )}
               
               <div className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
-                <div className={`p-4 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap ${
+                <div className={`p-4 rounded-2xl text-sm leading-relaxed ${
                   msg.role === 'user' 
                     ? 'bg-primary text-white rounded-br-sm' 
-                    : 'bg-surface border border-white/5 rounded-bl-sm shadow-sm'
+                    : 'bg-surface border border-white/5 rounded-bl-sm shadow-sm prose prose-invert max-w-none prose-p:leading-relaxed prose-pre:bg-white/5 prose-img:rounded-xl'
                 }`}>
-                  {msg.content}
+                  {msg.role === 'user' ? (
+                    <span className="whitespace-pre-wrap">{msg.content}</span>
+                  ) : (
+                    <ReactMarkdown>{msg.content}</ReactMarkdown>
+                  )}
                 </div>
                 
                 {msg.role === 'assistant' && msg.citations && msg.citations.length > 0 && (
