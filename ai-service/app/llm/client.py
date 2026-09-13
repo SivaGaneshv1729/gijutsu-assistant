@@ -2,7 +2,9 @@ import logging
 import os
 from typing import List, Optional
 
-import httpx
+import json
+import urllib.request
+import urllib.error
 
 from app.rag.prompting import build_context, build_prompt, extractive_answer, no_results_answer
 
@@ -16,9 +18,9 @@ USE_LLM = os.getenv("USE_LLM", "true").lower() in ("1", "true", "yes")
 async def check_ollama_health() -> bool:
     """Check if Ollama is reachable."""
     try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
-            resp = await client.get(f"{OLLAMA_BASE_URL}/api/tags")
-            return resp.status_code == 200
+        req = urllib.request.Request(f"{OLLAMA_BASE_URL}/api/tags")
+        with urllib.request.urlopen(req, timeout=5.0) as resp:
+            return resp.getcode() == 200
     except Exception:
         return False
 
@@ -26,10 +28,10 @@ async def check_ollama_health() -> bool:
 async def list_models() -> List[str]:
     """List available models on the Ollama instance."""
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            resp = await client.get(f"{OLLAMA_BASE_URL}/api/tags")
-            if resp.status_code == 200:
-                data = resp.json()
+        req = urllib.request.Request(f"{OLLAMA_BASE_URL}/api/tags")
+        with urllib.request.urlopen(req, timeout=10.0) as resp:
+            if resp.getcode() == 200:
+                data = json.loads(resp.read().decode())
                 return [m["name"] for m in data.get("models", [])]
     except Exception as e:
         logger.warning("Failed to list Ollama models: %s", e)
@@ -57,16 +59,22 @@ async def generate_completion(
 
     for attempt in range(3):
         try:
-            async with httpx.AsyncClient(timeout=120.0) as client:
-                resp = await client.post(f"{OLLAMA_BASE_URL}/api/generate", json=payload)
-            if resp.status_code == 200:
-                data = resp.json()
-                return data.get("response", "").strip()
-            if resp.status_code in (500, 503):
+            req = urllib.request.Request(
+                f"{OLLAMA_BASE_URL}/api/generate",
+                data=json.dumps(payload).encode(),
+                headers={"Content-Type": "application/json"},
+                method="POST"
+            )
+            with urllib.request.urlopen(req, timeout=120.0) as resp:
+                if resp.getcode() == 200:
+                    data = json.loads(resp.read().decode())
+                    return data.get("response", "").strip()
+        except urllib.error.HTTPError as e:
+            if e.code in (500, 503):
                 import asyncio
                 await asyncio.sleep(2 * (attempt + 1))
                 continue
-            logger.error("Ollama error %s: %s", resp.status_code, resp.text[:500])
+            logger.error("Ollama error %s: %s", e.code, e.read().decode()[:500])
             break
         except Exception as e:
             logger.exception("Ollama request failed")

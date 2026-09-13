@@ -1,5 +1,5 @@
 from typing import List, Dict, Any
-from app.rag.database import get_db, DocumentChunkModel
+from app.rag.database import get_db
 from app.rag.opensearch_client import os_manager
 from app.embeddings.generator import embedding_generator
 from sqlalchemy import text
@@ -9,48 +9,81 @@ class HybridRetriever:
     def __init__(self, db: Session):
         self.db = db
 
-    def _dense_search(self, query_embedding: List[float], top_k: int = 10) -> List[Dict]:
+    def _dense_search(self, query_embedding: List[float], access_level: str, top_k: int = 10) -> List[Dict]:
         """
-        Search pgvector using the <-> operator (L2 distance) or <=> (Cosine distance).
-        Here we'll use cosine distance.
+        RBAC-before-retrieval dense search against pgvector (see ADR-005).
+
+        Filters on the document's access_level BEFORE ranking so unauthorized
+        content never enters the result set. Uses the L2 (<->) operator to align
+        with the HNSW vector_l2_ops index defined in the database migrations.
         """
-        # We also need RBAC filtering here in a real scenario
-        # e.g., filter by access_level IN (:allowed_levels)
-        results = self.db.query(DocumentChunkModel)\
-            .order_by(DocumentChunkModel.embedding.cosine_distance(query_embedding))\
-            .limit(top_k)\
-            .all()
-        
+        # Vector literal is built from model-generated floats, not user input.
+        vector_literal = "[" + ",".join(str(float(x)) for x in query_embedding) + "]"
+
+        sql = text("""
+            SELECT dc.id AS chunk_id,
+                   dc.text_content AS content,
+                   d.name AS doc_name,
+                   d.access_level AS access_level
+            FROM document_chunks dc
+            JOIN documents d ON dc.document_id = d.id
+            WHERE UPPER(d.access_level) = 'PUBLIC'
+               OR UPPER(d.access_level) = UPPER(:access_level)
+            ORDER BY dc.embedding <-> CAST(:query AS vector)
+            LIMIT :top_k
+        """)
+
+        rows = self.db.execute(
+            sql,
+            {"query": vector_literal, "access_level": access_level, "top_k": top_k},
+        ).fetchall()
+
         return [
             {
-                "chunk_id": r.id,
+                "chunk_id": r.chunk_id,
                 "content": r.content,
-                "section": r.section,
-                "score": 1.0 # placeholder for actual cosine similarity score
-            } for r in results
+                "section": None,
+                "doc_name": r.doc_name,
+                "access_level": r.access_level,
+            }
+            for r in rows
         ]
 
-    def _keyword_search(self, query: str, top_k: int = 10) -> List[Dict]:
-        os_results = os_manager.search(query, access_level="PUBLIC", top_k=top_k)
-        hits = os_results.get("hits", {}).get("hits", [])
-        return [
-            {
-                "chunk_id": h["_source"]["chunk_id"],
-                "content": h["_source"]["content"],
-                "section": h["_source"].get("section"),
-                "score": h["_score"]
-            } for h in hits
-        ]
+    def _keyword_search(self, query: str, access_level: str, top_k: int = 10) -> List[Dict]:
+        """
+        Best-effort keyword search over OpenSearch (reserved / optionally deployed).
 
-    def retrieve(self, query: str, top_k: int = 5) -> List[Dict]:
+        OpenSearch is not populated by the ingestion pipeline and its security is
+        disabled in the default compose stack, so failures are tolerated here to
+        keep the dense-only path working. When present, results are filtered to
+        the caller's permitted access levels.
+        """
+        try:
+            os_results = os_manager.search(query, access_level=access_level, top_k=top_k)
+            hits = os_results.get("hits", {}).get("hits", [])
+            return [
+                {
+                    "chunk_id": h["_source"]["chunk_id"],
+                    "content": h["_source"].get("content", ""),
+                    "section": h["_source"].get("section"),
+                    "doc_name": h["_source"].get("doc_name"),
+                    "access_level": h["_source"].get("access_level"),
+                    "score": h["_score"],
+                }
+                for h in hits
+            ]
+        except Exception:
+            return []
+
+    def retrieve(self, query: str, access_level: str = "OPERATOR", top_k: int = 5) -> List[Dict]:
         # 1. Generate query embedding
         query_embedding = embedding_generator.generate(query)
 
-        # 2. Dense search
-        dense_results = self._dense_search(query_embedding, top_k=top_k*2)
-        
-        # 3. Keyword search
-        keyword_results = self._keyword_search(query, top_k=top_k*2)
+        # 2. Dense search (RBAC-filtered)
+        dense_results = self._dense_search(query_embedding, access_level, top_k=top_k * 2)
+
+        # 3. Keyword search (best-effort)
+        keyword_results = self._keyword_search(query, access_level, top_k=top_k * 2)
 
         # 4. Reciprocal Rank Fusion (RRF)
         # RRF Score = 1 / (k + rank)
@@ -70,10 +103,10 @@ class HybridRetriever:
 
         # Sort by RRF score
         sorted_chunk_ids = sorted(scores.keys(), key=lambda cid: scores[cid], reverse=True)
-        
+
         final_results = []
         for cid in sorted_chunk_ids[:top_k]:
-            res = chunks[cid]
+            res = dict(chunks[cid])
             res["rrf_score"] = scores[cid]
             final_results.append(res)
 

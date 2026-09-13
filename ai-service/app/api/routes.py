@@ -1,29 +1,114 @@
+import traceback
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from fastapi.exceptions import RequestValidationError
+from pydantic import BaseModel, Field
+from typing import List, Optional
 from sqlalchemy.orm import Session
-from app.rag.database import get_db
+import os
+import uuid
+import fitz # PyMuPDF
+from app.rag.database import get_db, DocumentChunkModel
 from app.rag.orchestrator import RAGOrchestrator
+from app.embeddings.generator import embedding_generator
 
 router = APIRouter()
 
+MAX_QUERY_LENGTH = 2000
+
+
 class QueryRequest(BaseModel):
-    query: str
+    query: str = Field(min_length=1, max_length=MAX_QUERY_LENGTH)
+    access_level: Optional[str] = "OPERATOR"
     language: str = "en"
+
+
+class Citation(BaseModel):
+    id: str
+    text_content: str
+    name: Optional[str] = None
+    access_level: Optional[str] = None
+    rrf_score: Optional[float] = None
+
 
 class QueryResponse(BaseModel):
     answer: str
-    citations: list
+    citations: List[Citation]
     confidence: str
+
 
 @router.post("/query", response_model=QueryResponse)
 def handle_query(request: QueryRequest, db: Session = Depends(get_db)):
     try:
         orchestrator = RAGOrchestrator(db)
-        result = orchestrator.query(request.query)
+        result = orchestrator.query(request.query, access_level=request.access_level)
         return QueryResponse(
             answer=result["answer"],
             citations=result["citations"],
             confidence=result["confidence"]
         )
     except Exception as e:
+        print("Error handling query:")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail="An unexpected error occurred while processing the query.")
+
+class IngestRequest(BaseModel):
+    filename: str
+    original_filename: str
+    access_level: str
+
+@router.post("/ingest")
+def ingest_document(request: IngestRequest, db: Session = Depends(get_db)):
+    try:
+        file_path = os.path.join("/app/uploads", request.filename)
+        if not os.path.exists(file_path):
+            raise HTTPException(status_code=404, detail="File not found")
+            
+        chunks = []
+        # Basic parsing using PyMuPDF for PDFs
+        if request.original_filename.lower().endswith(".pdf"):
+            doc = fitz.open(file_path)
+            for page_num in range(len(doc)):
+                page = doc[page_num]
+                text = page.get_text()
+                if not text.strip():
+                    continue
+                    
+                # Split text into rough chunks of ~1000 characters
+                words = text.split()
+                chunk_words = []
+                for word in words:
+                    chunk_words.append(word)
+                    if len(" ".join(chunk_words)) > 1000:
+                        chunks.append({"page_number": page_num + 1, "text": " ".join(chunk_words)})
+                        chunk_words = []
+                if chunk_words:
+                    chunks.append({"page_number": page_num + 1, "text": " ".join(chunk_words)})
+        else:
+            # Fallback for txt or other unhandled types, just store basic reference (or error)
+            return {"status": "success", "message": "Non-PDF file saved. RAG indexing skipped."}
+            
+        if not chunks:
+            return {"status": "success", "message": "No text extracted from PDF."}
+
+        # Generate embeddings and save to DB
+        db_chunks = []
+        for i, chunk in enumerate(chunks):
+            embedding = embedding_generator.generate(chunk["text"])
+            db_chunk = DocumentChunkModel(
+                id=str(uuid.uuid4()),
+                document_id=request.original_filename,
+                content=chunk["text"],
+                page_number=chunk["page_number"],
+                section=f"Page {chunk['page_number']}",
+                access_level=request.access_level.toUpperCase() if request.access_level else "ADMIN",
+                metadata_json={"source": request.original_filename},
+                embedding=embedding
+            )
+            db.add(db_chunk)
+            
+        db.commit()
+        return {"status": "success", "chunks_processed": len(chunks)}
+    except Exception as e:
+        print("Error ingesting document:")
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))

@@ -1,3 +1,4 @@
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.routes import router as rag_router
@@ -9,11 +10,16 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Allow CORS for local development via API Gateway/Vite Proxy
+# Allow CORS only for known origins (Vite dev / API gateway). Wildcard +
+# allow_credentials is invalid per the CORS spec and disables credentialed requests.
+ALLOWED_ORIGINS = os.getenv(
+    "CORS_ORIGINS", "http://localhost:4000,http://127.0.0.1:4000,http://localhost:8080"
+).split(",")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=[o.strip() for o in ALLOWED_ORIGINS if o.strip()],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
