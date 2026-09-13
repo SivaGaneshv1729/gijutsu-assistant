@@ -1,16 +1,16 @@
 # Manufacturing Engineering Intelligence (MEI) Platform
 
-An enterprise-grade Hybrid Retrieval-Augmented Generation (RAG) platform designed to assist manufacturing engineers and operators. The MEI Platform instantly surfaces technical manuals, SOPs, and machine alarm troubleshooting guides using advanced AI similarity search.
+An enterprise-grade Hybrid Retrieval-Augmented Generation (RAG) Chatbot designed to assist manufacturing engineers and operators. The MEI Platform instantly surfaces technical manuals, SOPs, and machine troubleshooting guides with inline images and step-by-step procedures using advanced AI similarity search.
 
 ## 🏗️ Architecture overview
 
 The platform is built on a modern microservices architecture:
 
-1. **Frontend (`/frontend`)**: A React + Vite application styled with Tailwind CSS and Lucide React icons, running on port `4000`. Features an enterprise dashboard, JWT-based authentication, and a real-time AI chat interface.
-2. **API Gateway (`/backend`)**: A Java Spring Boot application running on port `8080`. Acts as the primary entry point, handling JWT Security, Role-Based Access Control (RBAC), and proxying authorized queries to the AI Engine.
+1. **Frontend (`/frontend`)**: A React + Vite application styled with Tailwind CSS and Lucide React icons, running on port `3000`. Features an AI Engineering Copilot chat interface, markdown rendering for images/steps, and a secure Admin Document Upload panel.
+2. **API Gateway (`/backend`)**: A Java Spring Boot application running on port `8080`. Acts as the primary entry point, handling JWT Security, Role-Based Access Control (RBAC), and proxying authorized queries to the AI Engine. It also handles multipart file uploads to a shared Docker volume.
 3. **AI Engine (`/ai-service`)**: A Python FastAPI application running on port `8000`. Uses HuggingFace's `sentence-transformers` (`all-MiniLM-L6-v2`) to embed user queries and execute vector math against the database.
 4. **Ingestion Pipeline (`/ingestion`)**: A Python-based ETL pipeline that reads technical PDFs, semantically chunks them, generates 384-dimensional embeddings, and inserts them into PostgreSQL.
-5. **Infrastructure (`docker-compose.yml`)**: Containerized databases including PostgreSQL (with `pgvector` enabled on port `5433`), OpenSearch, Neo4j, and **Ollama** (local LLM on port `11434`).
+5. **Infrastructure (`docker-compose.yml`)**: Containerized databases including PostgreSQL (with `pgvector` enabled on port `5433`), OpenSearch, Neo4j, and a shared `uploads_data` volume.
 
 ## 📁 Repository Structure
 
@@ -103,7 +103,7 @@ cd frontend
 npm install
 npm run dev
 ```
-Access the application at: **http://localhost:4000**
+Access the application at: **http://localhost:3000**
 
 ## 🔐 Authentication & Roles
 
@@ -116,9 +116,9 @@ The platform enforces Role-Based Access Control (RBAC). On startup the backend s
 | `operator` | `password123` | `OPERATOR`          |
 | `manager`  | `password123` | `MANAGER`           |
 
-Self-registration through the API always creates `OPERATOR` accounts. Higher-privileged roles are provisioned by the seed only.
+Self-registration through the API always creates `OPERATOR` accounts. Higher-privileged roles are provisioned by the database seed only.
 
-*(Note: There is a temporary "Demo Mode" bypass in the UI where entering `demo` / `demo` will allow you to view the Dashboard design if the backend databases are offline. Disable it by setting `VITE_DEMO_MODE=false` in `frontend/.env`).*
+*Note: The **Admin Panel** (for uploading PDFs and images) is strictly visible only to users with the `ADMIN` role. Regular operators and engineers can only access the Copilot Chatbot.*
 
 ## 🧠 LLM (100% local — Ollama)
 
@@ -135,12 +135,10 @@ The AI service generates grounded answers using **Ollama** running entirely on y
 ### Gateway (Port 8080)
 - `POST /api/auth/register` - Register a new user (`username`, `email`, `password`); always OPERATOR
 - `POST /api/auth/login` - Authenticate and receive a JWT token
-- `GET /api/auth/me` - Current user's username and role (requires `Bearer`)
+- `POST /api/documents/upload` - (ADMIN ONLY) Upload machinery PDFs and Images to the shared volume
+- `GET /api/documents/images/{filename}` - Serve uploaded images to the chatbot UI
 - `POST /api/rag/query` - Secure RAG query proxy (requires `Bearer` token)
-- `GET /api/knowledge/documents` - List ingested documents with chunk counts
-- `DELETE /api/knowledge/documents/{id}` - Remove a document and its chunks
 - `GET /api/system/health` - Database connectivity status
-- `GET /api/system/ai-health` - AI service availability
 
 ### AI Service (Port 8000)
 - `GET /health` - Liveness check

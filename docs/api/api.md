@@ -124,7 +124,7 @@ Public Spring Boot health. Also exposes `info` and `metrics`.
 ### `GET /health`
 - `200 OK` → `{"status": "ok"}`
 
-### `POST /api/v1/query`
+### `POST /api/rag/query`
 Internal retrieval + answer endpoint, normally called only by the gateway. Does its own RBAC filtering.
 
 Request:
@@ -138,7 +138,7 @@ Request:
 Response (`200 OK`):
 ```json
 {
-  "answer": "Alarm E101 indicates an injection pressure fault...",
+  "answer": "### Summary\nBased on the engineering knowledge base, here is the information related to: **What is alarm E101?**\n\n### Details / Steps\n...",
   "citations": [
     {
       "id": "0e0e...",
@@ -146,14 +146,41 @@ Response (`200 OK`):
       "name": "Injection_Molding_Troubleshooting.pdf",
       "access_level": "public"
     }
-  ]
+  ],
+  "confidence": "High"
 }
 ```
 
 Behavior:
 - Embeds the query with `all-MiniLM-L6-v2`, searches pgvector, filtering on `access_level`.
-- Answers via the local Ollama LLM (`mistral` by default). Without Ollama running, returns the top matched chunk (extractive fallback).
+- Generates a fully formatted markdown answer using a custom internal string parsing summarizer, completely bypassing external or local LLMs like Ollama.
 - Validation failure (empty query) → `422 Unprocessable Entity`.
+
+### `POST /api/rag/ingest`
+Internal document ingestion endpoint called by the Gateway when a new file is uploaded.
+
+Request:
+```json
+{
+  "filename": "uuid-1234.pdf",
+  "original_filename": "Manual.pdf",
+  "access_level": "ADMIN"
+}
+```
+
+Response (`200 OK`):
+```json
+{
+  "status": "success",
+  "chunks_processed": 15
+}
+```
+
+Behavior:
+- Reads the file from the shared Docker `/app/uploads` volume.
+- Extracts text using PyMuPDF (`fitz`).
+- Semantically chunks the text and embeds it using `all-MiniLM-L6-v2`.
+- Inserts chunks into the Postgres `document_chunks` table for future retrieval.
 
 ### `GET /api/v1/llm/health`
 Check if Ollama is reachable.
