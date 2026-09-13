@@ -65,7 +65,7 @@ def ingest_document(request: IngestRequest, db: Session = Depends(get_db)):
             
         chunks = []
         # Basic parsing using PyMuPDF for PDFs
-        if request.original_filename.lower().endswith(".pdf"):
+        if request.filename.lower().endswith(".pdf"):
             doc = fitz.open(file_path)
             for page_num in range(len(doc)):
                 page = doc[page_num]
@@ -83,12 +83,27 @@ def ingest_document(request: IngestRequest, db: Session = Depends(get_db)):
                         chunk_words = []
                 if chunk_words:
                     chunks.append({"page_number": page_num + 1, "text": " ".join(chunk_words)})
+        elif request.filename.lower().endswith((".md", ".txt")):
+            with open(file_path, "r", encoding="utf-8") as f:
+                text = f.read()
+                
+            words = text.split()
+            chunk_words = []
+            chunk_index = 1
+            for word in words:
+                chunk_words.append(word)
+                if len(" ".join(chunk_words)) > 1000:
+                    chunks.append({"page_number": chunk_index, "text": " ".join(chunk_words)})
+                    chunk_index += 1
+                    chunk_words = []
+            if chunk_words:
+                chunks.append({"page_number": chunk_index, "text": " ".join(chunk_words)})
         else:
-            # Fallback for txt or other unhandled types, just store basic reference (or error)
-            return {"status": "success", "message": "Non-PDF file saved. RAG indexing skipped."}
+            # Fallback for unhandled types
+            return {"status": "success", "message": "Non-PDF/MD file saved. RAG indexing skipped."}
             
         if not chunks:
-            return {"status": "success", "message": "No text extracted from PDF."}
+            return {"status": "success", "message": "No text extracted from document."}
 
         # Generate embeddings and save to DB
         db_chunks = []
@@ -100,7 +115,7 @@ def ingest_document(request: IngestRequest, db: Session = Depends(get_db)):
                 content=chunk["text"],
                 page_number=chunk["page_number"],
                 section=f"Page {chunk['page_number']}",
-                access_level=request.access_level.toUpperCase() if request.access_level else "ADMIN",
+                access_level=request.access_level.upper() if request.access_level else "ADMIN",
                 metadata_json={"source": request.original_filename},
                 embedding=embedding
             )

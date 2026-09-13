@@ -28,11 +28,6 @@ function App() {
               <Copilot />
             </ProtectedRoute>
           } />
-          <Route path="/admin" element={
-            <ProtectedRoute>
-              <AdminPanel />
-            </ProtectedRoute>
-          } />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>

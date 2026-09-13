@@ -71,18 +71,16 @@ export default function Copilot() {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-4rem)]">
-      <header className="mb-4 flex items-center justify-between">
+    <div className="flex flex-col h-full bg-white dark:bg-gray-900 w-full">
+      <header className="p-4 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between bg-white dark:bg-gray-900 shadow-sm z-10">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-            Engineering Copilot
-            <span className="px-2 py-1 text-xs font-semibold bg-accent/20 text-accent rounded-full">BETA</span>
+          <h1 className="text-xl font-semibold flex items-center gap-2">
+            SHIBAURA Engineering Copilot
           </h1>
-          <p className="text-textMuted mt-1">Grounded RAG assistance for manufacturing workflows.</p>
         </div>
       </header>
 
-      <div className="flex-1 glass-panel rounded-2xl flex flex-col overflow-hidden relative">
+      <div className="flex-1 flex flex-col overflow-hidden max-w-5xl mx-auto w-full relative">
         {/* Messages Area */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
           {messages.map((msg) => (
@@ -94,10 +92,10 @@ export default function Copilot() {
               )}
               
               <div className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
-                <div className={`p-4 rounded-2xl text-sm leading-relaxed ${
+                <div className={`p-4 text-sm leading-relaxed ${
                   msg.role === 'user' 
-                    ? 'bg-primary text-white rounded-br-sm' 
-                    : 'bg-surface border border-white/5 rounded-bl-sm shadow-sm prose prose-invert max-w-none prose-p:leading-relaxed prose-pre:bg-white/5 prose-img:rounded-xl'
+                    ? 'bg-blue-600 text-white rounded-2xl rounded-br-sm' 
+                    : 'bg-transparent text-gray-800 dark:text-gray-200 prose dark:prose-invert max-w-none prose-p:leading-relaxed prose-img:rounded-lg'
                 }`}>
                   {msg.role === 'user' ? (
                     <span className="whitespace-pre-wrap">{msg.content}</span>
@@ -136,27 +134,27 @@ export default function Copilot() {
         </div>
 
         {/* Input Area */}
-        <div className="p-4 border-t border-white/5 bg-surface/50">
-          <div className="max-w-4xl mx-auto relative">
+        <div className="p-4 bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 shrink-0">
+          <div className="relative">
             <input
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-              placeholder="Ask about alarms, maintenance, or machine specifications..."
-              className="w-full pl-5 pr-14 py-4 bg-background border border-white/10 rounded-2xl focus:ring-2 focus:ring-primary/50 focus:border-primary/50 text-text placeholder-textMuted/50 outline-none shadow-inner"
+              placeholder="Ask about machinery, maintenance, or operations..."
+              className="w-full pl-4 pr-12 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-1 focus:ring-blue-500 outline-none text-sm"
             />
             <button
               onClick={handleSend}
               disabled={!input.trim() || loading}
-              className="absolute right-2 top-2 p-2 rounded-xl bg-primary hover:bg-primary/90 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="absolute right-2 top-1.5 p-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 transition-colors"
             >
-              <Send size={20} />
+              <Send size={18} />
             </button>
           </div>
-          <div className="max-w-4xl mx-auto mt-2 text-center flex items-center justify-center gap-2 text-xs text-textMuted">
-            <ShieldAlert size={14} />
-            AI can make mistakes. Always verify with official documentation before modifying machine parameters.
+          <div className="mt-2 text-center flex items-center justify-center gap-1 text-[11px] text-gray-400">
+            <ShieldAlert size={12} />
+            Always verify with official documentation.
           </div>
         </div>
       </div>
@@ -168,27 +166,27 @@ function CitationBlock({ citations, confidence }: { citations: any[], confidence
   const [expanded, setExpanded] = useState(false);
   
   return (
-    <div className="bg-background rounded-xl border border-white/5 overflow-hidden">
+    <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
       <button 
         onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center justify-between p-3 text-xs font-medium text-textMuted hover:bg-white/5 transition-colors"
+        className="w-full flex items-center justify-between p-2.5 text-[11px] font-medium text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
       >
         <div className="flex items-center gap-2">
-          <FileText size={14} />
+          <FileText size={12} />
           <span>{citations.length} Sources Referenced</span>
           {confidence && (
-            <span className={`px-1.5 py-0.5 rounded text-[10px] uppercase font-bold ${
-              confidence === 'High' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'
+            <span className={`px-1.5 py-0.5 rounded uppercase font-bold ${
+              confidence === 'High' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
             }`}>
               {confidence} Confidence
             </span>
           )}
         </div>
-        {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+        {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
       </button>
       
       {expanded && (
-        <div className="p-3 border-t border-white/5 space-y-2 bg-surface/30">
+        <div className="p-2.5 border-t border-gray-200 dark:border-gray-700 space-y-2 bg-white dark:bg-gray-900">
           {citations.map((c, i) => (
             <div key={i} className="text-xs flex items-start gap-2">
               <span className="text-primary font-mono mt-0.5">[{i + 1}]</span>
