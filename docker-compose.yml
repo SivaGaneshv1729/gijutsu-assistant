@@ -26,6 +26,7 @@ services:
       - bootstrap.memory_lock=true
       - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
       - OPENSEARCH_INITIAL_ADMIN_PASSWORD=${OPENSEARCH_PASSWORD:-StrongPassword123!}
+      - plugins.security.disabled=true
     ulimits:
       memlock:
         soft: -1
@@ -54,22 +55,23 @@ services:
     volumes:
       - neo4j_data:/data
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider localhost:7474 || exit 1"]
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:7474 || curl -s -I http://localhost:7474 || exit 1"]
       interval: 10s
-      timeout: 5s
-      retries: 5
-
-  ollama:
-    image: ollama/ollama:latest
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollama_data:/root/.ollama
-    healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:11434/ || exit 1"]
-      interval: 10s
-      timeout: 5s
+      timeout: 10s
       retries: 10
+
+  # Temporarily disabled ollama due to network download failures for the 3.5GB image
+  # ollama:
+  #   image: ollama/ollama:latest
+  #   ports:
+  #     - "11434:11434"
+  #   volumes:
+  #     - ollama_data:/root/.ollama
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "curl -sf http://localhost:11434/ || exit 1"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 10
 
   backend:
     build:
@@ -83,9 +85,12 @@ services:
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       JWT_SECRET: ${JWT_SECRET:-9a8b7c6d5e4f3g2h1i0j9k8l7m6n5o4p3q2r1s0t9u8v7w6x5y4z3a2b1c0d}
       JWT_EXPIRATION_MS: 86400000
+      AI_SERVICE_URL: http://ai-service:8000
     depends_on:
       postgres:
         condition: service_healthy
+    volumes:
+      - uploads_data:/app/uploads
 
   ai-service:
     build:
@@ -109,6 +114,9 @@ services:
         condition: service_healthy
       neo4j:
         condition: service_healthy
+    volumes:
+      - ./ai-service:/app
+      - uploads_data:/app/uploads
 
   frontend:
     build:
@@ -125,3 +133,4 @@ volumes:
   opensearch_data:
   neo4j_data:
   ollama_data:
+  uploads_data:
