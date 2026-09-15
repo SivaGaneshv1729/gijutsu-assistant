@@ -22,7 +22,7 @@ class RAGOrchestrator:
             access_level = "OPERATOR"
 
         # 1. Retrieve hybrid evidence, filtered to the caller's access level
-        top_chunks = self.retriever.retrieve(user_question, access_level=access_level, top_k=5)
+        top_chunks = self.retriever.retrieve(user_question, access_level=access_level, top_k=8)
 
         # 2. Hallucination Control: if we have no authorized evidence, say so.
         if not top_chunks:
