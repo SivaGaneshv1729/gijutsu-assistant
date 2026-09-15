@@ -1,16 +1,19 @@
 import json
 import os
 import requests
+import random
 from typing import List, Dict
 
-GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
+keys_env = os.getenv("GROQ_API_KEYS", "")
+GROQ_API_KEYS = [k.strip() for k in keys_env.split(",") if k.strip()]
+
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 GROQ_MODEL = os.getenv("GROQ_MODEL", "llama3-8b-8192")
 MAX_TOKENS = int(os.getenv("LLM_MAX_TOKENS", "1024"))
 
 class LLMService:
     def __init__(self):
-        self.api_key = GROQ_API_KEY
+        self.api_keys = GROQ_API_KEYS
         self.model = GROQ_MODEL
 
     def _fallback_generation(self, messages: List[Dict[str, str]]) -> str:
@@ -50,11 +53,12 @@ class LLMService:
         Calls the Groq Cloud API to generate a high-quality response.
         If no API key is provided, falls back to basic string parsing.
         """
-        if not self.api_key:
+        if not self.api_keys:
             return self._fallback_generation(messages)
             
+        api_key = random.choice(self.api_keys)
         headers = {
-            "Authorization": f"Bearer {self.api_key}",
+            "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json"
         }
         
