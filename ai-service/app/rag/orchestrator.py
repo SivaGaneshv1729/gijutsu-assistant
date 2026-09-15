@@ -21,7 +21,16 @@ class RAGOrchestrator:
         if access_level not in ALLOWED_ACCESS_LEVELS:
             access_level = "OPERATOR"
 
-        # 1. Retrieve hybrid evidence, filtered to the caller's access level
+        # 1. Short-circuit for simple greetings
+        greetings = {"hi", "hello", "hey", "good morning", "good afternoon", "hi there", "hello there"}
+        if user_question.strip().lower() in greetings:
+            return {
+                "answer": "Hello! I am the SHIBAURA Engineering Intelligence assistant. How can I help you with your machine documentation today?",
+                "citations": [],
+                "confidence": "High"
+            }
+
+        # 2. Retrieve hybrid evidence, filtered to the caller's access level
         top_chunks = self.retriever.retrieve(user_question, access_level=access_level, top_k=8)
 
         # 2. Hallucination Control: if we have no authorized evidence, say so.
