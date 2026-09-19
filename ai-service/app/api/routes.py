@@ -105,6 +105,15 @@ def ingest_document(request: IngestRequest, db: Session = Depends(get_db)):
         if not chunks:
             return {"status": "success", "message": "No text extracted from document."}
 
+        from sqlalchemy import text
+
+        # Ensure the parent document exists to satisfy foreign key constraints created by the Java backend
+        db.execute(
+            text("INSERT INTO documents (id, name, type, access_level, created_at) VALUES (:id, :name, 'MANUAL', :access_level, CURRENT_TIMESTAMP) ON CONFLICT (id) DO NOTHING"),
+            {"id": request.original_filename, "name": request.filename, "access_level": request.access_level.upper() if request.access_level else "ADMIN"}
+        )
+        db.commit()
+
         # Generate embeddings and save to DB
         db_chunks = []
         for i, chunk in enumerate(chunks):
@@ -121,8 +130,14 @@ def ingest_document(request: IngestRequest, db: Session = Depends(get_db)):
             )
             db.add(db_chunk)
             
+            # Commit in batches of 10 to avoid excessive memory usage and OOM crashes
+            if (i + 1) % 10 == 0:
+                db.commit()
+                
         db.commit()
         return {"status": "success", "chunks_processed": len(chunks)}
+    except HTTPException:
+        raise  # Re-raise HTTP exceptions (e.g., 404) as-is
     except Exception as e:
         print("Error ingesting document:")
         traceback.print_exc()
