@@ -9,34 +9,48 @@ class HybridRetriever:
     def __init__(self, db: Session):
         self.db = db
 
+    # RBAC hierarchy: higher roles can access all lower-level documents
+    ACCESS_HIERARCHY = {
+        "PUBLIC":               ["PUBLIC"],
+        "OPERATOR":             ["PUBLIC", "OPERATOR"],
+        "MAINTENANCE_ENGINEER": ["PUBLIC", "OPERATOR", "MAINTENANCE_ENGINEER"],
+        "ENGINEER":             ["PUBLIC", "OPERATOR", "MAINTENANCE_ENGINEER", "ENGINEER"],
+        "MANAGER":              ["PUBLIC", "OPERATOR", "MAINTENANCE_ENGINEER", "ENGINEER", "MANAGER"],
+        "ADMIN":                ["PUBLIC", "OPERATOR", "MAINTENANCE_ENGINEER", "ENGINEER", "MANAGER", "ADMIN"],
+    }
+
+    def _get_permitted_levels(self, access_level: str) -> list:
+        """Return the list of access levels this role is permitted to view."""
+        return self.ACCESS_HIERARCHY.get(access_level.upper(), ["PUBLIC"])
+
     def _dense_search(self, query_embedding: List[float], access_level: str, top_k: int = 10) -> List[Dict]:
         """
         RBAC-before-retrieval dense search against pgvector (see ADR-005).
 
-        Filters on the document's access_level BEFORE ranking so unauthorized
-        content never enters the result set. Uses the L2 (<->) operator to align
-        with the HNSW vector_l2_ops index defined in the database migrations.
+        Uses a proper role hierarchy: ADMIN can see everything, ENGINEER can see
+        PUBLIC + OPERATOR + MAINTENANCE_ENGINEER + ENGINEER, etc.
         """
-        # Vector literal is built from model-generated floats, not user input.
+        permitted = self._get_permitted_levels(access_level)
         vector_literal = "[" + ",".join(str(float(x)) for x in query_embedding) + "]"
 
-        sql = text("""
+        # Build parameterized IN clause
+        level_params = {f"level_{i}": lvl for i, lvl in enumerate(permitted)}
+        level_placeholders = ", ".join(f":level_{i}" for i in range(len(permitted)))
+
+        sql = text(f"""
             SELECT dc.id AS chunk_id,
-                   dc.text_content AS content,
+                   dc.content AS content,
                    d.name AS doc_name,
                    d.access_level AS access_level
             FROM document_chunks dc
             JOIN documents d ON dc.document_id = d.id
-            WHERE UPPER(d.access_level) = 'PUBLIC'
-               OR UPPER(d.access_level) = UPPER(:access_level)
+            WHERE UPPER(d.access_level) IN ({level_placeholders})
             ORDER BY dc.embedding <-> CAST(:query AS vector)
             LIMIT :top_k
         """)
 
-        rows = self.db.execute(
-            sql,
-            {"query": vector_literal, "access_level": access_level, "top_k": top_k},
-        ).fetchall()
+        params = {"query": vector_literal, "top_k": top_k, **level_params}
+        rows = self.db.execute(sql, params).fetchall()
 
         return [
             {
