@@ -7,7 +7,7 @@ keys_env = os.getenv("GROQ_API_KEYS", "")
 GROQ_API_KEYS = [k.strip() for k in keys_env.split(",") if k.strip()]
 
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
-GROQ_MODEL = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
+GROQ_MODEL = os.getenv("GROQ_MODEL", "qwen/qwen3.8-27b")
 MAX_TOKENS = int(os.getenv("LLM_MAX_TOKENS", "1024"))
 
 class LLMService:
@@ -70,6 +70,7 @@ class LLMService:
                 continue
 
         # All keys exhausted — fall back to extractive response
+        print(f"GROQ API FAILED. Falling back. Last error: {last_error}", flush=True)
         return self._extractive_fallback(messages)
 
     def _extractive_fallback(self, messages: List[Dict[str, str]]) -> str:
@@ -100,9 +101,9 @@ class LLMService:
         if not chunks:
             return "I could not find sufficient information in the authorized engineering knowledge base to answer this reliably."
 
-        response = "Here is what I found in the knowledge base:\n\n"
+        response = "I could not generate a full synthesized answer right now. Here are the most relevant excerpts I found in the knowledge base:\n\n"
         for idx, info in enumerate(chunks[:5], 1):
-            response += f"**{idx}. {info['section']}**\n{info['content']}\n\n"
+            response += f"**{info['section']}**\n{info['content']} [{idx}]\n\n"
         return response
 
 llm_service = LLMService()
