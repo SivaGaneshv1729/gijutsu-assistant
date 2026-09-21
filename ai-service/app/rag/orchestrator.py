@@ -22,7 +22,7 @@ class RAGOrchestrator:
             access_level = "OPERATOR"
 
         # 1. Short-circuit for simple greetings
-        greetings = {"hi", "hello", "hey", "good morning", "good afternoon", "hi there", "hello there"}
+        greetings = {"hi", "hello", "hey", "good morning", "good afternoon", "hi there", "hello there", "holla", "hola", "greetings"}
         if user_question.strip().lower() in greetings:
             return {
                 "answer": "Hello! I am the SHIBAURA Engineering Intelligence assistant. How can I help you with your machine documentation today?",
@@ -72,6 +72,7 @@ class RAGOrchestrator:
                 "name": chunk.get("doc_name"),
                 "access_level": chunk.get("access_level"),
                 "rrf_score": chunk.get("rrf_score"),
+                "image_url": chunk.get("image_url"),
             })
 
         return {
