@@ -1,0 +1,64 @@
+{
+  "data": {
+    "answer": "**The V70 Controller \u2013 Shibaura\u2019s Standard Operator Interface**\n\nThe V70 Controller serves as the primary human\u2011machine interface for modern Shibaura injection\u2011molding equipment. It is a **19\u2011inch high\u2011resolution touchscreen** that supports intuitive gestures such as swipe and pinch\u2011to\u2011zoom, giving the operator a smartphone\u2011like experience when navigating machine settings and data screens\u30101\u3011.  \n\nKey capabilities built into the V70 include:\n\n- **iPAQET integration** \u2013 the controller links directly with Shibaura\u2019s iPAQET data\u2011acquisition system, enabling real\u2011time monitoring of injection pressure, speed, melt temperature, and other critical process variables\u30101\u3011.  \n- **Alarm management** \u2013 on\u2011screen prompts guide the operator through troubleshooting steps for common alarms (e.g., pressure fault E101, temperature deviation T205)\u30105\u3011.  \n\nIn terms of safety, the V70 panel also houses the **Emergency Stop (E\u2011Stop) buttons**. These are positioned on the main V70 control panel (as well as on the rear of the machine and any robotic interface). Activating an E\u2011Stop instantly dumps hydraulic pressure on hydraulic\u2011type machines (IS series) and cuts power to the servo drives on servo\u2011driven models (EC\u2011SXIII series)\u30102\u3011. After an E\u2011Stop, the operator must clear the \u201cE\u2011STOP ENGAGED\u201d alarm on the V70 screen before production can resume\u30102\u3011.  \n\nOverall, the V70 Controller combines a modern, touch\u2011centric UI with integrated diagnostics and safety functions, making it the central hub for both operating and protecting Shibaura injection\u2011molding machines.",
+    "citations": [
+      {
+        "id": "80b1923d-8af2-49ec-b9d0-99e0fc281112",
+        "text_content": "power consumption by up to 60% compared to hydraulic machines. - **Controller:** V70 Controller (see below). ### Hydraulic IS Series The IS Series represents Shibaura's robust line of hydraulic injection molding machines, designed for heavy-duty applications requiring massive clamping force and holding pressure. - **Clamping Force:** Ranges from 1000 to over 4000 tons. - **Hydraulics:** Features a variable displacement pump system for energy savings while maintaining the raw power of hydraulics. - **Applications:** Ideal for large automotive parts, pallets, and thick-walled optical lenses where sustained high holding pressure is critical. ## The V70 Controller The V70 Controller is the standard operator interface for modern Shibaura Injection Molding Machines. - **Display:** 19-inch high-resolution touchscreen panel with swipe and pinch-to-zoom capabilities, mimicking a smartphone interface. - **Features:** - **iPAQET Integration:** Connects seamlessly with the iPAQET data acquisition system",
+        "name": "shibaura_company_profile.md",
+        "access_level": "PUBLIC",
+        "rrf_score": 0.01639344262295082
+      },
+      {
+        "id": "828a5da1-88bb-4ff4-9af5-842c58c6c420",
+        "text_content": "with comprehensive safety guarding. - **Front Safety Door:** Equipped with a dual-channel mechanical interlock and a magnetic sensor. The machine's clamping mechanism will be immediately disabled if this door is opened during a cycle. - **Rear Safety Door:** Features a fixed guard with a bolted interlock. - **Purge Guard:** Covers the injection nozzle area. It is heavily reinforced to protect operators from high-pressure molten plastic spray. ## Emergency Stop (E-Stop) System E-Stop buttons are located on the main V70 control panel, the rear of the machine, and on the robotic automation interface (if equipped). - **Activation:** Pressing any E-Stop immediately dumps hydraulic pressure (on IS series) and cuts power to the servo drives (on EC-SXIII series). - **Reset:** To clear an E-Stop, the button must be physically twisted and pulled out. The operator must then clear the `E-STOP ENGAGED` alarm on the V70 Controller before operations can resume.",
+        "name": "machine_safety_guidelines.md",
+        "access_level": "PUBLIC",
+        "rrf_score": 0.016129032258064516
+      },
+      {
+        "id": "c574fd0d-14a1-4ddc-838b-a280d178f060",
+        "text_content": "with comprehensive safety guarding. - **Front Safety Door:** Equipped with a dual-channel mechanical interlock and a magnetic sensor. The machine's clamping mechanism will be immediately disabled if this door is opened during a cycle. - **Rear Safety Door:** Features a fixed guard with a bolted interlock. - **Purge Guard:** Covers the injection nozzle area. It is heavily reinforced to protect operators from high-pressure molten plastic spray. ## Emergency Stop (E-Stop) System E-Stop buttons are located on the main V70 control panel, the rear of the machine, and on the robotic automation interface (if equipped). - **Activation:** Pressing any E-Stop immediately dumps hydraulic pressure (on IS series) and cuts power to the servo drives (on EC-SXIII series). - **Reset:** To clear an E-Stop, the button must be physically twisted and pulled out. The operator must then clear the `E-STOP ENGAGED` alarm on the V70 Controller before operations can resume.",
+        "name": "machine_safety_guidelines.md",
+        "access_level": "PUBLIC",
+        "rrf_score": 0.015873015873015872
+      },
+      {
+        "id": "7452cad8-9964-41ad-aa76-9e3b73e04176",
+        "text_content": "with comprehensive safety guarding. - **Front Safety Door:** Equipped with a dual-channel mechanical interlock and a magnetic sensor. The machine's clamping mechanism will be immediately disabled if this door is opened during a cycle. - **Rear Safety Door:** Features a fixed guard with a bolted interlock. - **Purge Guard:** Covers the injection nozzle area. It is heavily reinforced to protect operators from high-pressure molten plastic spray. ## Emergency Stop (E-Stop) System E-Stop buttons are located on the main V70 control panel, the rear of the machine, and on the robotic automation interface (if equipped). - **Activation:** Pressing any E-Stop immediately dumps hydraulic pressure (on IS series) and cuts power to the servo drives (on EC-SXIII series). - **Reset:** To clear an E-Stop, the button must be physically twisted and pulled out. The operator must then clear the `E-STOP ENGAGED` alarm on the V70 Controller before operations can resume.",
+        "name": "machine_safety_guidelines.md",
+        "access_level": "PUBLIC",
+        "rrf_score": 0.015625
+      },
+      {
+        "id": "02e562f1-7462-4a59-b8ca-ad14c49ffcba",
+        "text_content": "for IoT factory monitoring. - **Real-time Diagnostics:** Provides real-time graphing of injection pressure, speed, and melt temperature. - **Alarm Management:** Features intuitive alarm troubleshooting (e.g., E101 for pressure faults, T205 for temperature deviations) directly on the screen with step-by-step resolution guides.",
+        "name": "shibaura_company_profile.md",
+        "access_level": "PUBLIC",
+        "rrf_score": 0.015384615384615385
+      },
+      {
+        "id": "742475de-5592-4f9e-97bf-43a7d7742f32",
+        "text_content": "# Shibaura Machine Safety Guidelines ## Overview Safety is the highest priority when operating heavy manufacturing equipment such as Injection Molding Machines (IMM) and Die Casting Machines. The following guidelines outline the standard safety procedures for all Shibaura machinery. ## Lockout / Tagout (LOTO) Procedures Before any maintenance is performed on the EC-SXIII or IS Series machines, energy sources must be isolated. 1. **Identify Energy Sources:** Ensure electrical, hydraulic, and pneumatic sources are identified. 2. **Shutdown:** Turn off the machine using the V70 Controller, then activate the main physical disconnect switch. 3. **Lock and Tag:** Apply a standardized safety lock to the disconnect switch. Attach a highly visible tag indicating the date, time, and name of the engineer performing the maintenance. 4. **Verify Isolation:** Attempt to start the machine to verify that all energy sources have been successfully isolated. ## Machine Safety Guards Shibaura machines are equipped",
+        "name": "machine_safety_guidelines.md",
+        "access_level": "PUBLIC",
+        "rrf_score": 0.015151515151515152
+      },
+      {
+        "id": "4ef2fe5a-68d4-4422-84ea-8b3ca1335847",
+        "text_content": "# Shibaura Machine Safety Guidelines ## Overview Safety is the highest priority when operating heavy manufacturing equipment such as Injection Molding Machines (IMM) and Die Casting Machines. The following guidelines outline the standard safety procedures for all Shibaura machinery. ## Lockout / Tagout (LOTO) Procedures Before any maintenance is performed on the EC-SXIII or IS Series machines, energy sources must be isolated. 1. **Identify Energy Sources:** Ensure electrical, hydraulic, and pneumatic sources are identified. 2. **Shutdown:** Turn off the machine using the V70 Controller, then activate the main physical disconnect switch. 3. **Lock and Tag:** Apply a standardized safety lock to the disconnect switch. Attach a highly visible tag indicating the date, time, and name of the engineer performing the maintenance. 4. **Verify Isolation:** Attempt to start the machine to verify that all energy sources have been successfully isolated. ## Machine Safety Guards Shibaura machines are equipped",
+        "name": "machine_safety_guidelines.md",
+        "access_level": "PUBLIC",
+        "rrf_score": 0.014925373134328358
+      },
+      {
+        "id": "75375f47-2396-436a-b1e4-4a36cf8994c9",
+        "text_content": "# Shibaura Machine Safety Guidelines ## Overview Safety is the highest priority when operating heavy manufacturing equipment such as Injection Molding Machines (IMM) and Die Casting Machines. The following guidelines outline the standard safety procedures for all Shibaura machinery. ## Lockout / Tagout (LOTO) Procedures Before any maintenance is performed on the EC-SXIII or IS Series machines, energy sources must be isolated. 1. **Identify Energy Sources:** Ensure electrical, hydraulic, and pneumatic sources are identified. 2. **Shutdown:** Turn off the machine using the V70 Controller, then activate the main physical disconnect switch. 3. **Lock and Tag:** Apply a standardized safety lock to the disconnect switch. Attach a highly visible tag indicating the date, time, and name of the engineer performing the maintenance. 4. **Verify Isolation:** Attempt to start the machine to verify that all energy sources have been successfully isolated. ## Machine Safety Guards Shibaura machines are equipped",
+        "name": "machine_safety_guidelines.md",
+        "access_level": "PUBLIC",
+        "rrf_score": 0.014705882352941176
+      }
+    ],
+    "confidence": "High"
+  }
+}

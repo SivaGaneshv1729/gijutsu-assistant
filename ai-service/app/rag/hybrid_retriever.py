@@ -42,7 +42,8 @@ class HybridRetriever:
                    dc.content AS content,
                    d.name AS doc_name,
                    d.access_level AS access_level,
-                   dc.metadata_json AS metadata_json
+                   dc.metadata_json AS metadata_json,
+                   dc.page_number AS page_number
             FROM document_chunks dc
             JOIN documents d ON dc.document_id = d.id
             WHERE UPPER(d.access_level) IN ({level_placeholders})
@@ -61,7 +62,8 @@ class HybridRetriever:
                 "section": None,
                 "doc_name": r.doc_name,
                 "access_level": r.access_level,
-                "image_url": r.metadata_json.get("image_url") if r.metadata_json else None
+                "image_url": r.metadata_json.get("image_url") if r.metadata_json else None,
+                "page_number": getattr(r, "page_number", None)
             }
             for r in rows
         ]
@@ -86,6 +88,7 @@ class HybridRetriever:
                     "doc_name": h["_source"].get("doc_name"),
                     "access_level": h["_source"].get("access_level"),
                     "score": h["_score"],
+                    "page_number": h["_source"].get("page_number"),
                 }
                 for h in hits if str(h["_source"].get("doc_name", "")).lower().endswith(".pdf")
             ]

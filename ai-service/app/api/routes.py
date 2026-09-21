@@ -30,6 +30,7 @@ class Citation(BaseModel):
     access_level: Optional[str] = None
     rrf_score: Optional[float] = None
     image_url: Optional[str] = None
+    page_number: Optional[int] = None
 
 
 class QueryResponse(BaseModel):

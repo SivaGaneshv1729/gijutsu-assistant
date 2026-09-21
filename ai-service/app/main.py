@@ -3,6 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.routes import router as rag_router
 from app.rag.database import init_db
+from fastapi.staticfiles import StaticFiles
 
 app = FastAPI(
     title="SHIBAURA Engineering Intelligence AI Service",
@@ -23,6 +24,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+os.makedirs("/app/uploads", exist_ok=True)
+app.mount("/uploads", StaticFiles(directory="/app/uploads"), name="uploads")
 
 # Optional: Initialize DB schemas on startup if we are the owner
 @app.on_event("startup")

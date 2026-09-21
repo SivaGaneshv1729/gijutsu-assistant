@@ -73,6 +73,7 @@ class RAGOrchestrator:
                 "access_level": chunk.get("access_level"),
                 "rrf_score": chunk.get("rrf_score"),
                 "image_url": chunk.get("image_url"),
+                "page_number": chunk.get("page_number"),
             })
 
         return {
