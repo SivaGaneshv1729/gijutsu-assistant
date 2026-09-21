@@ -41,10 +41,12 @@ class HybridRetriever:
             SELECT dc.id AS chunk_id,
                    dc.content AS content,
                    d.name AS doc_name,
-                   d.access_level AS access_level
+                   d.access_level AS access_level,
+                   dc.metadata_json AS metadata_json
             FROM document_chunks dc
             JOIN documents d ON dc.document_id = d.id
             WHERE UPPER(d.access_level) IN ({level_placeholders})
+              AND d.name ILIKE '%.pdf'
             ORDER BY dc.embedding <-> CAST(:query AS vector)
             LIMIT :top_k
         """)
@@ -59,6 +61,7 @@ class HybridRetriever:
                 "section": None,
                 "doc_name": r.doc_name,
                 "access_level": r.access_level,
+                "image_url": r.metadata_json.get("image_url") if r.metadata_json else None
             }
             for r in rows
         ]
@@ -84,7 +87,7 @@ class HybridRetriever:
                     "access_level": h["_source"].get("access_level"),
                     "score": h["_score"],
                 }
-                for h in hits
+                for h in hits if str(h["_source"].get("doc_name", "")).lower().endswith(".pdf")
             ]
         except Exception:
             return []
