@@ -1,6 +1,7 @@
 import traceback
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.exceptions import RequestValidationError
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from typing import List, Optional
 from sqlalchemy.orm import Session
@@ -18,7 +19,7 @@ MAX_QUERY_LENGTH = 2000
 
 class QueryRequest(BaseModel):
     query: str = Field(min_length=1, max_length=MAX_QUERY_LENGTH)
-    access_level: Optional[str] = "OPERATOR"
+    access_level: Optional[str] = "ENGINEER"
     language: str = "en"
 
 
@@ -28,6 +29,7 @@ class Citation(BaseModel):
     name: Optional[str] = None
     access_level: Optional[str] = None
     rrf_score: Optional[float] = None
+    image_url: Optional[str] = None
 
 
 class QueryResponse(BaseModel):
@@ -36,25 +38,35 @@ class QueryResponse(BaseModel):
     confidence: str
 
 
-@router.post("/query", response_model=QueryResponse)
-def handle_query(request: QueryRequest, db: Session = Depends(get_db)):
-    try:
-        orchestrator = RAGOrchestrator(db)
-        result = orchestrator.query(request.query, access_level=request.access_level)
-        return QueryResponse(
-            answer=result["answer"],
-            citations=result["citations"],
-            confidence=result["confidence"]
-        )
-    except Exception as e:
-        print("Error handling query:")
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail="An unexpected error occurred while processing the query.")
-
 class IngestRequest(BaseModel):
     filename: str
     original_filename: str
-    access_level: str
+    access_level: Optional[str] = "ENGINEER"
+
+
+@router.get("/images/{filename}")
+def get_image(filename: str):
+    """Serve extracted PDF images for the chat UI."""
+    file_path = os.path.join("/app/uploads/images", filename)
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="Image not found")
+    return FileResponse(file_path)
+
+
+@router.post("/query", response_model=QueryResponse)
+def query_rag(request: QueryRequest, db: Session = Depends(get_db)):
+    try:
+        orchestrator = RAGOrchestrator(db)
+        result = orchestrator.query(
+            user_question=request.query,
+            access_level=request.access_level
+        )
+        return result
+    except Exception as e:
+        print("Error processing query:")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail="Internal server error while processing query.")
+
 
 @router.post("/ingest")
 def ingest_document(request: IngestRequest, db: Session = Depends(get_db)):
@@ -63,6 +75,9 @@ def ingest_document(request: IngestRequest, db: Session = Depends(get_db)):
         if not os.path.exists(file_path):
             raise HTTPException(status_code=404, detail="File not found")
             
+        images_dir = "/app/uploads/images"
+        os.makedirs(images_dir, exist_ok=True)
+            
         chunks = []
         # Basic parsing using PyMuPDF for PDFs
         if request.filename.lower().endswith(".pdf"):
@@ -70,7 +85,33 @@ def ingest_document(request: IngestRequest, db: Session = Depends(get_db)):
             for page_num in range(len(doc)):
                 page = doc[page_num]
                 text = page.get_text()
+                
+                # Extract images from page
+                image_url = None
+                image_list = page.get_images()
+                if image_list:
+                    # Just take the first significant image on the page
+                    for img in image_list:
+                        xref = img[0]
+                        pix = fitz.Pixmap(doc, xref)
+                        
+                        # Convert to standard RGB if needed
+                        if pix.n - pix.alpha > 3:
+                            pix = fitz.Pixmap(fitz.csRGB, pix)
+                            
+                        # Save the image
+                        img_filename = f"{request.original_filename}_p{page_num}_{xref}.png"
+                        img_path = os.path.join(images_dir, img_filename)
+                        pix.save(img_path)
+                        pix = None # free memory
+                        
+                        image_url = f"/api/rag/images/{img_filename}"
+                        break # Only associate one image per page chunk
+
                 if not text.strip():
+                    if image_url:
+                        # If page has only an image and no text, we still want to keep the image!
+                        chunks.append({"page_number": page_num + 1, "text": f"[Image on page {page_num+1}]", "image_url": image_url})
                     continue
                     
                 # Split text into rough chunks of ~1000 characters
@@ -79,10 +120,11 @@ def ingest_document(request: IngestRequest, db: Session = Depends(get_db)):
                 for word in words:
                     chunk_words.append(word)
                     if len(" ".join(chunk_words)) > 1000:
-                        chunks.append({"page_number": page_num + 1, "text": " ".join(chunk_words)})
+                        chunks.append({"page_number": page_num + 1, "text": " ".join(chunk_words), "image_url": image_url})
                         chunk_words = []
+                        image_url = None # Only attach image to the first chunk of the page
                 if chunk_words:
-                    chunks.append({"page_number": page_num + 1, "text": " ".join(chunk_words)})
+                    chunks.append({"page_number": page_num + 1, "text": " ".join(chunk_words), "image_url": image_url})
         elif request.filename.lower().endswith((".md", ".txt")):
             with open(file_path, "r", encoding="utf-8") as f:
                 text = f.read()
@@ -118,6 +160,11 @@ def ingest_document(request: IngestRequest, db: Session = Depends(get_db)):
         db_chunks = []
         for i, chunk in enumerate(chunks):
             embedding = embedding_generator.generate(chunk["text"])
+            
+            metadata = {"source": request.original_filename}
+            if chunk.get("image_url"):
+                metadata["image_url"] = chunk["image_url"]
+                
             db_chunk = DocumentChunkModel(
                 id=str(uuid.uuid4()),
                 document_id=request.original_filename,
@@ -125,7 +172,7 @@ def ingest_document(request: IngestRequest, db: Session = Depends(get_db)):
                 page_number=chunk["page_number"],
                 section=f"Page {chunk['page_number']}",
                 access_level=request.access_level.upper() if request.access_level else "ADMIN",
-                metadata_json={"source": request.original_filename},
+                metadata_json=metadata,
                 embedding=embedding
             )
             db.add(db_chunk)
