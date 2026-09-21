@@ -262,7 +262,14 @@ export default function Copilot() {
       <div className="absolute inset-0 z-0 pointer-events-none opacity-20 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')]"></div>
 
       {/* LEFT PANE: Sidebar */}
-      <div className={`${sidebarOpen ? 'w-[280px]' : 'w-0'} transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] shrink-0 flex flex-col z-20 bg-black/40 backdrop-blur-2xl border-r border-white/5`}>
+      {/* Mobile Backdrop */}
+      {sidebarOpen && (
+        <div 
+          className="md:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-30" 
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+      <div className={`${sidebarOpen ? 'w-[280px] translate-x-0' : 'w-[280px] -translate-x-full md:w-0 md:translate-x-0'} transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] shrink-0 flex flex-col z-40 bg-black/40 backdrop-blur-2xl border-r border-white/5 absolute md:relative h-full`}>
         <div className="p-4">
           <button
             onClick={handleNewChat}
@@ -349,25 +356,26 @@ export default function Copilot() {
 
             {messages.map((msg) => (
               <div key={msg.id} className="w-full animate-in fade-in duration-500">
-                <div className="max-w-3xl mx-auto flex gap-6 px-4 py-8">
-                  {/* Avatar */}
-                  <div className="shrink-0 mt-1">
-                    {msg.role === 'assistant' ? (
-                      <div className={`w-9 h-9 rounded-full flex items-center justify-center shadow-lg border ${msg.isError ? 'bg-red-500/10 text-red-400 border-red-500/30 shadow-red-500/20' : 'bg-gradient-to-br from-indigo-600 to-blue-800 text-white border-indigo-500/50 shadow-[0_0_15px_rgba(99,102,241,0.4)]'}`}>
-                        <Bot size={18} />
+                <div className={`max-w-3xl mx-auto flex gap-4 px-4 py-6 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  
+                  {/* Assistant Avatar */}
+                  {msg.role === 'assistant' && (
+                    <div className="shrink-0 mt-1 hidden sm:block">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center shadow-lg border ${msg.isError ? 'bg-red-500/10 text-red-400 border-red-500/30 shadow-red-500/20' : 'bg-gradient-to-br from-indigo-600 to-blue-800 text-white border-indigo-500/50 shadow-[0_0_15px_rgba(99,102,241,0.4)]'}`}>
+                        <Bot size={16} />
                       </div>
-                    ) : (
-                      <div className="w-9 h-9 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center shadow-md">
-                        <User size={18} className="text-slate-300" />
-                      </div>
-                    )}
-                  </div>
+                    </div>
+                  )}
 
-                  {/* Content */}
-                  <div className="flex-1 min-w-0 space-y-4 pt-1">
-                    <div className="text-slate-200 font-normal text-[15px] prose prose-invert max-w-none prose-p:leading-relaxed prose-pre:bg-black/50 prose-pre:border prose-pre:border-white/10 prose-headings:font-bold prose-headings:text-slate-100">
+                  {/* Content Bubble */}
+                  <div className={`flex flex-col min-w-0 max-w-[85%] ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
+                    <div className={`text-[15px] leading-relaxed font-normal p-4 rounded-2xl ${
+                      msg.role === 'user' 
+                        ? 'bg-white/10 text-slate-100 border border-white/5 rounded-tr-sm backdrop-blur-md shadow-lg' 
+                        : 'text-slate-200 prose prose-invert max-w-none prose-p:leading-relaxed prose-pre:bg-black/50 prose-pre:border prose-pre:border-white/10 prose-headings:font-bold prose-headings:text-slate-100'
+                    }`}>
                       {msg.role === 'user' ? (
-                        <div className="whitespace-pre-wrap leading-relaxed">{msg.content}</div>
+                        <div className="whitespace-pre-wrap">{msg.content}</div>
                       ) : (
                         <MarkdownWithCitations content={msg.content} citations={msg.citations} isTyping={msg.isTyping} />
                       )}
@@ -377,13 +385,22 @@ export default function Copilot() {
                       <button
                         onClick={() => handleRetry(msg.query!, msg.id)}
                         disabled={loading}
-                        className="flex items-center gap-2 px-4 py-2 mt-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm font-medium hover:bg-red-500/20 transition-colors disabled:opacity-50"
+                        className="flex items-center gap-2 px-4 py-2 mt-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm font-medium hover:bg-red-500/20 transition-colors disabled:opacity-50"
                       >
                         <RotateCcw size={14} />
                         Re-initialize Query
                       </button>
                     )}
                   </div>
+                  
+                  {/* User Avatar (Hidden on small screens for cleaner look) */}
+                  {msg.role === 'user' && (
+                    <div className="shrink-0 mt-1 hidden sm:block">
+                      <div className="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center shadow-md">
+                        <User size={16} className="text-slate-300" />
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
@@ -439,9 +456,18 @@ export default function Copilot() {
       </div>
 
       {/* RIGHT PANE: NotebookLM-Style PDF Citation Viewer */}
+      {/* Mobile Backdrop for Citation Pane */}
+      {activeCitation && (
+        <div 
+          className="xl:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-40" 
+          onClick={() => setActiveCitation(null)}
+        />
+      )}
       <div 
-        className={`${activeCitation ? 'w-[500px] opacity-100 translate-x-0' : 'w-0 opacity-0 translate-x-10'} 
-          transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] shrink-0 flex flex-col z-30 m-4 rounded-3xl bg-black/40 backdrop-blur-3xl border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.5)] overflow-hidden`}
+        className={`${activeCitation ? 'opacity-100 translate-y-0 xl:translate-x-0 pointer-events-auto' : 'opacity-0 translate-y-10 xl:translate-y-0 xl:translate-x-10 pointer-events-none xl:w-0'} 
+          transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] shrink-0 flex flex-col z-50 xl:z-30 
+          fixed inset-4 xl:relative xl:inset-auto xl:w-[500px] xl:m-4 
+          rounded-3xl bg-black/80 xl:bg-black/40 backdrop-blur-3xl border border-white/20 xl:border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.8)] overflow-hidden`}
       >
         {activeCitation && (
           <>
