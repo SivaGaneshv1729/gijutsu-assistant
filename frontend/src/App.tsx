@@ -3,7 +3,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import Layout from './components/Layout';
 import Login from './pages/Login';
 import Copilot from './pages/Copilot';
-import AdminPanel from './pages/AdminPanel';
 
 const queryClient = new QueryClient();
 
