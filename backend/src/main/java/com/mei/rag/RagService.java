@@ -74,6 +74,6 @@ public class RagService {
                 return role.get();
             }
         }
-        return Role.OPERATOR.name();
+        return Role.ENGINEER.name();
     }
 }
