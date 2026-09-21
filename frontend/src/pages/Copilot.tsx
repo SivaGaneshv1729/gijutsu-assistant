@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Send, Bot, User, X, Plus, MessageSquare, Menu, RotateCcw, LogOut, FileText, Sparkles, Zap } from 'lucide-react';
+import { Send, Bot, User, X, MessageSquare, Menu, RotateCcw, LogOut, FileText, Sparkles, Zap } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { useNavigate } from 'react-router-dom';
 
@@ -265,36 +265,34 @@ export default function Copilot() {
       {/* Mobile Backdrop */}
       {sidebarOpen && (
         <div 
-          className="md:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-30" 
+          className="md:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-30 transition-opacity duration-300" 
           onClick={() => setSidebarOpen(false)}
         />
       )}
-      <div className={`${sidebarOpen ? 'w-[280px] translate-x-0' : 'w-[280px] -translate-x-full md:w-0 md:translate-x-0'} transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] shrink-0 flex flex-col z-40 bg-black/40 backdrop-blur-2xl border-r border-white/5 absolute md:relative h-full`}>
-        <div className="p-4 flex items-center gap-2">
-          <button
-            onClick={() => setSidebarOpen(false)}
-            className="p-2.5 rounded-xl hover:bg-white/10 text-slate-400 hover:text-slate-200 transition-colors hidden md:flex items-center justify-center shrink-0"
-            title="Close sidebar"
-          >
-            <Menu size={20} />
-          </button>
-          <button
-            onClick={handleNewChat}
-            className="flex-1 flex items-center justify-between p-2.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 hover:border-white/20 hover:shadow-[0_0_15px_rgba(99,102,241,0.2)] text-sm font-medium transition-all duration-300 group"
-          >
-            <span className="flex items-center gap-2 text-slate-200">
-              <Sparkles size={16} className="text-indigo-400 group-hover:text-indigo-300" />
-              New Uplink
-            </span>
-            <Plus size={16} className="text-slate-400 group-hover:rotate-90 transition-transform duration-300" />
-          </button>
-          <button
-            onClick={() => setSidebarOpen(false)}
-            className="md:hidden p-2.5 rounded-xl border border-transparent hover:bg-white/10 text-slate-400 hover:text-slate-200 transition-colors flex items-center justify-center shrink-0"
-          >
-            <X size={20} />
-          </button>
-        </div>
+      <div className={`${sidebarOpen ? 'translate-x-0 w-[280px]' : '-translate-x-full w-[280px] md:translate-x-0 md:w-0'} transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] shrink-0 z-40 absolute md:relative h-full overflow-hidden`}>
+        <div className="w-[280px] h-full flex flex-col bg-[#05050A] md:bg-black/40 backdrop-blur-2xl border-r border-white/5">
+          <div className="p-3 flex items-center justify-between gap-2">
+            <button
+              onClick={() => setSidebarOpen(false)}
+              className="p-2.5 rounded-xl hover:bg-white/10 text-slate-400 hover:text-slate-200 transition-colors hidden md:flex items-center justify-center shrink-0"
+              title="Close sidebar"
+            >
+              <Menu size={20} />
+            </button>
+            <button
+              onClick={handleNewChat}
+              className="flex-1 flex items-center justify-center gap-2 p-2.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 hover:border-white/20 hover:shadow-[0_0_15px_rgba(99,102,241,0.2)] text-sm font-medium transition-all duration-300 shrink-0"
+            >
+              <Sparkles size={16} className="text-indigo-400" />
+              <span className="text-slate-200">New Uplink</span>
+            </button>
+            <button
+              onClick={() => setSidebarOpen(false)}
+              className="md:hidden p-2.5 rounded-xl border border-transparent hover:bg-white/10 text-slate-400 hover:text-slate-200 transition-colors flex items-center justify-center shrink-0"
+            >
+              <X size={20} />
+            </button>
+          </div>
 
         <div className="flex-1 overflow-y-auto p-3 pt-0 no-scrollbar">
           <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-indigo-500/70 mb-3 px-3 mt-4">Transmissions</div>
@@ -322,6 +320,7 @@ export default function Copilot() {
             <LogOut size={16} />
             Disconnect
           </button>
+        </div>
         </div>
       </div>
 
