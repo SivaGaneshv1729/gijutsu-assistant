@@ -63,6 +63,7 @@ class HybridRetriever:
                 "doc_name": r.doc_name,
                 "access_level": r.access_level,
                 "image_url": r.metadata_json.get("image_url") if r.metadata_json else None,
+                "video_url": r.metadata_json.get("video_url") if r.metadata_json else None,
                 "page_number": getattr(r, "page_number", None)
             }
             for r in rows
@@ -88,6 +89,8 @@ class HybridRetriever:
                     "doc_name": h["_source"].get("doc_name"),
                     "access_level": h["_source"].get("access_level"),
                     "score": h["_score"],
+                    "image_url": h["_source"].get("image_url"),
+                    "video_url": h["_source"].get("video_url"),
                     "page_number": h["_source"].get("page_number"),
                 }
                 for h in hits if str(h["_source"].get("doc_name", "")).lower().endswith(".pdf")

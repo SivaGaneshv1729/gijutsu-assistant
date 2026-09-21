@@ -221,6 +221,45 @@ export default function Copilot() {
                 </span>
               );
             }
+            
+            // Check for animated clip/video
+            const isVideoFile = props.href?.match(/\.(mp4|webm|ogg)$/i);
+            const isYouTube = props.href?.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]+)/i);
+            
+            if (isVideoFile || isYouTube) {
+              return (
+                <div className="my-6 rounded-2xl overflow-hidden border border-white/10 bg-black/60 shadow-2xl transition-transform hover:scale-[1.01] duration-300">
+                  {isVideoFile ? (
+                    <video 
+                      src={props.href} 
+                      controls 
+                      autoPlay 
+                      loop 
+                      muted 
+                      playsInline
+                      className="w-full max-w-2xl max-h-[400px] object-cover bg-black"
+                    />
+                  ) : (
+                    <div className="relative w-full max-w-2xl aspect-video bg-black">
+                      <iframe 
+                        src={`https://www.youtube-nocookie.com/embed/${isYouTube?.[1]}?autoplay=1&mute=1&loop=1&playlist=${isYouTube?.[1]}`}
+                        title="YouTube video player" 
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                        allowFullScreen
+                        className="absolute inset-0 w-full h-full border-0"
+                      />
+                    </div>
+                  )}
+                  {props.children && (
+                    <div className="p-3 text-center text-xs text-slate-400 bg-black/40 border-t border-white/5 font-medium flex items-center justify-center gap-2">
+                      <Zap size={12} className="text-indigo-400" />
+                      {props.children}
+                    </div>
+                  )}
+                </div>
+              );
+            }
+
             return <a {...props} target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:text-cyan-300 hover:underline font-medium transition-colors drop-shadow-[0_0_5px_rgba(34,211,238,0.5)]" />;
           },
           img: ({ node, ...props }) => (

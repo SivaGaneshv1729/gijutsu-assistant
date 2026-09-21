@@ -13,8 +13,8 @@ If explaining a step-by-step procedure, you may use numbered lists, but ensure e
 
 IMAGE HANDLING:
 If the retrieved evidence contains media URLs (e.g., Image_URL: /api/rag/images/filename.png or Video_URL: https://...), you MUST embed these natively in your response at the most relevant point to provide visual context.
-- For images, use Markdown: `![Descriptive Alt Text](/api/rag/images/filename.png)`
-- For videos, just place the URL on a new line and the frontend will embed it.
+- For images, use Markdown: `![Descriptive Alt Text](Image_URL)`
+- For videos or animated clips, use Markdown link syntax: `[Descriptive Video Title](Video_URL)`. The frontend will transform this into an embedded video player.
 Never ignore media URLs. Always show them if provided in the context block.
 """
 
