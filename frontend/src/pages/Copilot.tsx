@@ -70,7 +70,7 @@ export default function Copilot() {
   }]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth > 768);
   const [activeCitation, setActiveCitation] = useState<Citation | null>(null);
   
   const endOfMessagesRef = useRef<HTMLDivElement>(null);
@@ -270,16 +270,29 @@ export default function Copilot() {
         />
       )}
       <div className={`${sidebarOpen ? 'w-[280px] translate-x-0' : 'w-[280px] -translate-x-full md:w-0 md:translate-x-0'} transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] shrink-0 flex flex-col z-40 bg-black/40 backdrop-blur-2xl border-r border-white/5 absolute md:relative h-full`}>
-        <div className="p-4">
+        <div className="p-4 flex items-center gap-2">
+          <button
+            onClick={() => setSidebarOpen(false)}
+            className="p-2.5 rounded-xl hover:bg-white/10 text-slate-400 hover:text-slate-200 transition-colors hidden md:flex items-center justify-center shrink-0"
+            title="Close sidebar"
+          >
+            <Menu size={20} />
+          </button>
           <button
             onClick={handleNewChat}
-            className="flex items-center justify-between w-full p-3.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 hover:border-white/20 hover:shadow-[0_0_15px_rgba(99,102,241,0.2)] text-sm font-medium transition-all duration-300 group"
+            className="flex-1 flex items-center justify-between p-2.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 hover:border-white/20 hover:shadow-[0_0_15px_rgba(99,102,241,0.2)] text-sm font-medium transition-all duration-300 group"
           >
-            <span className="flex items-center gap-3 text-slate-200">
+            <span className="flex items-center gap-2 text-slate-200">
               <Sparkles size={16} className="text-indigo-400 group-hover:text-indigo-300" />
               New Uplink
             </span>
             <Plus size={16} className="text-slate-400 group-hover:rotate-90 transition-transform duration-300" />
+          </button>
+          <button
+            onClick={() => setSidebarOpen(false)}
+            className="md:hidden p-2.5 rounded-xl border border-transparent hover:bg-white/10 text-slate-400 hover:text-slate-200 transition-colors flex items-center justify-center shrink-0"
+          >
+            <X size={20} />
           </button>
         </div>
 
@@ -319,7 +332,8 @@ export default function Copilot() {
         <header className="sticky top-0 z-20 flex items-center p-4">
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="p-2 -ml-2 rounded-lg hover:bg-white/10 text-slate-400 hover:text-slate-200 transition-colors mr-3 backdrop-blur-md"
+            className={`p-2 -ml-2 rounded-lg hover:bg-white/10 text-slate-400 hover:text-slate-200 transition-colors mr-3 backdrop-blur-md ${sidebarOpen ? 'md:hidden' : ''}`}
+            title="Open sidebar"
           >
             <Menu size={20} />
           </button>
