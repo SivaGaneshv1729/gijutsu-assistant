@@ -221,8 +221,23 @@ export default function Copilot() {
                 </span>
               );
             }
-            return <a {...props} className="text-cyan-400 hover:text-cyan-300 hover:underline font-medium transition-colors drop-shadow-[0_0_5px_rgba(34,211,238,0.5)]" />;
-          }
+            return <a {...props} target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:text-cyan-300 hover:underline font-medium transition-colors drop-shadow-[0_0_5px_rgba(34,211,238,0.5)]" />;
+          },
+          img: ({ node, ...props }) => (
+            <div className="my-6 rounded-2xl overflow-hidden border border-white/10 bg-black/60 shadow-2xl transition-transform hover:scale-[1.02] duration-300 cursor-pointer">
+              <img 
+                {...props} 
+                className="w-full max-w-2xl max-h-[600px] object-contain bg-white/5" 
+                alt={props.alt || "Embedded Image"} 
+                onClick={() => window.open(props.src, '_blank')}
+              />
+              {props.alt && (
+                <div className="p-3 text-center text-xs text-slate-400 bg-black/40 border-t border-white/5">
+                  {props.alt}
+                </div>
+              )}
+            </div>
+          )
         }}
       >
         {processedContent}

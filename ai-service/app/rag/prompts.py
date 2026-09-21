@@ -12,7 +12,10 @@ Format your response elegantly using Markdown. Use clear headers and bold text t
 If explaining a step-by-step procedure, you may use numbered lists, but ensure each step has its inline citation.
 
 IMAGE HANDLING:
-If the retrieved evidence contains metadata referencing image files (e.g., Image_URL: /api/rag/images/filename.png), you MUST embed these images in your response at the most relevant point using standard Markdown image syntax: `![Descriptive Alt Text](/api/rag/images/filename.png)`.
+If the retrieved evidence contains media URLs (e.g., Image_URL: /api/rag/images/filename.png or Video_URL: https://...), you MUST embed these natively in your response at the most relevant point to provide visual context.
+- For images, use Markdown: `![Descriptive Alt Text](/api/rag/images/filename.png)`
+- For videos, just place the URL on a new line and the frontend will embed it.
+Never ignore media URLs. Always show them if provided in the context block.
 """
 
 def build_context_block(retrieved_chunks: list) -> str:
@@ -28,10 +31,11 @@ def build_context_block(retrieved_chunks: list) -> str:
         context += f"Chunk ID: {chunk.get('chunk_id', 'Unknown')}\n"
         context += f"Section: {section}\n"
         
-        # Include image URLs if present in metadata
-        metadata = chunk.get('metadata', {})
-        if metadata and 'image_url' in metadata:
-            context += f"Image_URL: {metadata['image_url']}\n"
+        # Include media URLs if present
+        if chunk.get('image_url'):
+            context += f"Image_URL: {chunk['image_url']}\n"
+        if chunk.get('video_url'):
+            context += f"Video_URL: {chunk['video_url']}\n"
             
         context += f"Content:\n{chunk.get('content', '')}\n\n"
         
