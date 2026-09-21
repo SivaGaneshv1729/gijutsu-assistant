@@ -1,34 +1,72 @@
 import { useState, useRef, useEffect } from 'react';
-import { Send, Bot, User, FileText, ChevronDown, ChevronUp, ShieldAlert, Plus, MessageSquare, Menu, RotateCcw, LogOut } from 'lucide-react';
+import { Send, Bot, User, X, Plus, MessageSquare, Menu, RotateCcw, LogOut, FileText, Image as ImageIcon, Sparkles, Zap } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { useNavigate } from 'react-router-dom';
+
+interface Citation {
+  id: string;
+  text_content: string;
+  name?: string;
+  access_level?: string;
+  rrf_score?: number;
+  image_url?: string;
+}
 
 interface Message {
   id: string;
   role: 'user' | 'assistant';
   content: string;
-  citations?: any[];
+  citations?: Citation[];
   confidence?: string;
   isError?: boolean;
-  query?: string; // store original query for retry
+  query?: string; 
+  isTyping?: boolean; 
+}
+
+function TypewriterText({ text, onComplete }: { text: string; onComplete?: () => void }) {
+  const [displayed, setDisplayed] = useState('');
+  const onCompleteRef = useRef(onComplete);
+  
+  useEffect(() => {
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
+  
+  useEffect(() => {
+    let i = 0;
+    const interval = setInterval(() => {
+      setDisplayed(text.slice(0, i));
+      i++;
+      if (i > text.length) {
+        clearInterval(interval);
+        if (onCompleteRef.current) onCompleteRef.current();
+      }
+    }, 15); 
+    
+    return () => clearInterval(interval);
+  }, [text]);
+
+  return <span>{displayed}</span>;
 }
 
 export default function Copilot() {
   const [messages, setMessages] = useState<Message[]>([{
     id: '1',
     role: 'assistant',
-    content: 'Hello. I am the SHIBAURA Engineering Copilot. How can I assist you with maintenance, diagnostics, or operational queries today?',
+    content: 'Greetings, Commander. I am the SHIBAURA Engineering Intelligence System. All manuals and diagnostics are loaded. How can I assist you?',
+    isTyping: false
   }]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [activeCitation, setActiveCitation] = useState<Citation | null>(null);
+  
   const endOfMessagesRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
     endOfMessagesRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, loading]);
+  }, [messages, loading, activeCitation]);
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -69,17 +107,22 @@ export default function Copilot() {
         role: 'assistant',
         content: payload.answer || 'No answer received.',
         confidence: payload.confidence,
-        citations: payload.citations
+        citations: payload.citations,
+        isTyping: true 
       };
 
       setMessages(prev => [...prev, aiMsg]);
+      
+      // The user wants references to only open when clicked manually, like in NotebookLM.
+      
     } catch (err) {
       const errorMsg: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: "I encountered an error processing your request. Please try again.",
+        content: "System communication failure. Retrying uplink...",
         isError: true,
         query: query,
+        isTyping: true
       };
       setMessages(prev => [...prev, errorMsg]);
     } finally {
@@ -92,8 +135,9 @@ export default function Copilot() {
 
     const query = input.trim();
     const userMsg: Message = { id: Date.now().toString(), role: 'user', content: query };
-    setMessages(prev => [...prev, userMsg]);
+    setMessages(prev => [...prev.map(m => ({ ...m, isTyping: false })), userMsg]);
     setInput('');
+    setActiveCitation(null);
 
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
@@ -123,121 +167,193 @@ export default function Copilot() {
     setMessages([{
       id: Date.now().toString(),
       role: 'assistant',
-      content: 'Hello. I am the SHIBAURA Engineering Copilot. How can I assist you today?',
+      content: 'Greetings, Commander. I am the SHIBAURA Engineering Intelligence System. All manuals and diagnostics are loaded. How can I assist you?',
+      isTyping: false
     }]);
+    setActiveCitation(null);
+  };
+
+  const MarkdownWithCitations = ({ content, citations, isTyping }: { content: string, citations?: Citation[], isTyping?: boolean }) => {
+    const processedContent = content.replace(/(?:\[|【)(\d+(?:,\s*\d+)*)(?:\]|】)/g, '[$1](#cite-$1)');
+    
+    const markdownComponent = (
+      <ReactMarkdown
+        components={{
+          a: ({ node, ...props }) => {
+            if (props.href?.startsWith('#cite-')) {
+              const indicesStr = props.href.replace('#cite-', '');
+              const indices = indicesStr.split(',').map(s => parseInt(s.trim(), 10));
+              
+              return (
+                <span className="inline-flex gap-1 mx-1 translate-y-[-2px]">
+                  {indices.map(idx => {
+                    const citation = citations?.[idx - 1];
+                    if (!citation) return <sup key={idx} className="text-indigo-500/50 font-medium">[{idx}]</sup>;
+                    
+                    const isActive = activeCitation?.id === citation.id;
+                    return (
+                      <button
+                        key={idx}
+                        onClick={() => setActiveCitation(citation)}
+                        className={`inline-flex items-center justify-center min-w-[22px] h-[22px] px-1.5 rounded-full text-[11px] font-bold shadow-lg transition-all duration-300 cursor-pointer border ${
+                          isActive 
+                            ? 'bg-indigo-500 border-indigo-400 text-white shadow-indigo-500/50 scale-110' 
+                            : 'bg-indigo-500/10 border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/30 hover:border-indigo-400 hover:text-indigo-100 hover:shadow-indigo-500/20'
+                        }`}
+                      >
+                        {idx}
+                      </button>
+                    );
+                  })}
+                </span>
+              );
+            }
+            return <a {...props} className="text-cyan-400 hover:text-cyan-300 hover:underline font-medium transition-colors drop-shadow-[0_0_5px_rgba(34,211,238,0.5)]" />;
+          }
+        }}
+      >
+        {processedContent}
+      </ReactMarkdown>
+    );
+
+    if (isTyping) {
+      return <TypewriterText text={processedContent} onComplete={() => {
+        setMessages(prev => prev.map(m => m.content === content ? { ...m, isTyping: false } : m));
+      }} />;
+    }
+
+    return markdownComponent;
   };
 
   return (
-    <div className="flex h-screen bg-white dark:bg-gray-950 overflow-hidden font-sans w-full">
+    // DARK SPACE THEME 
+    <div className="flex h-screen bg-[#05050A] text-slate-200 font-sans w-full overflow-hidden relative">
+      
+      {/* Deep Space Animated Background */}
+      <div className="absolute inset-0 z-0 pointer-events-none bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-900/20 via-[#05050A] to-[#020205]"></div>
+      <div className="absolute inset-0 z-0 pointer-events-none opacity-20 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')]"></div>
 
-      {/* Sidebar */}
-      <div className={`${sidebarOpen ? 'w-64' : 'w-0'} transition-all duration-300 ease-in-out shrink-0 bg-gray-50 dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 flex flex-col overflow-hidden hidden md:flex`}>
-        <div className="p-3">
+      {/* LEFT PANE: Sidebar */}
+      <div className={`${sidebarOpen ? 'w-[280px]' : 'w-0'} transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] shrink-0 flex flex-col z-20 bg-black/40 backdrop-blur-2xl border-r border-white/5`}>
+        <div className="p-4">
           <button
             onClick={handleNewChat}
-            className="flex items-center gap-2 w-full p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-sm font-medium transition-colors shadow-sm"
+            className="flex items-center justify-between w-full p-3.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 hover:border-white/20 hover:shadow-[0_0_15px_rgba(99,102,241,0.2)] text-sm font-medium transition-all duration-300 group"
           >
-            <Plus size={16} />
-            New chat
+            <span className="flex items-center gap-3 text-slate-200">
+              <Sparkles size={16} className="text-indigo-400 group-hover:text-indigo-300" />
+              New Uplink
+            </span>
+            <Plus size={16} className="text-slate-400 group-hover:rotate-90 transition-transform duration-300" />
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-3 pt-0">
-          <div className="text-xs font-semibold text-gray-500 mb-2 px-2 mt-4">Today</div>
-          <button className="flex items-center gap-2 w-full p-2.5 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-800 text-sm text-left truncate transition-colors">
-            <MessageSquare size={16} className="shrink-0" />
-            <span className="truncate">V70 Controller Diagnostics</span>
-          </button>
-          <button className="flex items-center gap-2 w-full p-2.5 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-800 text-sm text-left truncate transition-colors text-gray-500">
-            <MessageSquare size={16} className="shrink-0" />
-            <span className="truncate">Hydraulic Pump Maintenance</span>
-          </button>
+        <div className="flex-1 overflow-y-auto p-3 pt-0 no-scrollbar">
+          <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-indigo-500/70 mb-3 px-3 mt-4">Transmissions</div>
+          <div className="space-y-1">
+            <button className="flex items-center gap-3 w-full p-3 rounded-xl bg-indigo-500/10 text-sm text-left truncate transition-colors border border-indigo-500/20 shadow-[inset_0_0_20px_rgba(99,102,241,0.05)] text-indigo-100 font-medium">
+              <MessageSquare size={16} className="shrink-0 text-indigo-400" />
+              <span className="truncate">Active Telemetry</span>
+            </button>
+            <button className="flex items-center gap-3 w-full p-3 rounded-xl hover:bg-white/5 text-sm text-left truncate transition-colors text-slate-400 hover:text-slate-200">
+              <MessageSquare size={16} className="shrink-0" />
+              <span className="truncate">Hydraulic Pump Maintenance</span>
+            </button>
+            <button className="flex items-center gap-3 w-full p-3 rounded-xl hover:bg-white/5 text-sm text-left truncate transition-colors text-slate-400 hover:text-slate-200">
+              <MessageSquare size={16} className="shrink-0" />
+              <span className="truncate">E101 Alarm Analysis</span>
+            </button>
+          </div>
         </div>
 
-        {/* Logout button */}
-        <div className="p-3 border-t border-gray-200 dark:border-gray-800">
+        <div className="p-4 border-t border-white/5 bg-black/20">
           <button
             onClick={handleLogout}
-            className="flex items-center gap-2 w-full p-2.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-sm text-red-600 dark:text-red-400 transition-colors"
+            className="flex items-center gap-3 w-full p-3 rounded-xl hover:bg-red-500/10 border border-transparent hover:border-red-500/20 text-sm text-slate-400 hover:text-red-400 transition-all duration-300"
           >
             <LogOut size={16} />
-            Sign out
+            Disconnect
           </button>
         </div>
       </div>
 
-      {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col h-full relative">
+      {/* CENTER PANE: ChatGPT Interface */}
+      <div className="flex-1 flex flex-col h-full relative z-10 min-w-0">
+        
         {/* Header */}
-        <header className="sticky top-0 z-20 flex items-center p-3 border-b border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-gray-950/80 backdrop-blur-md">
+        <header className="sticky top-0 z-20 flex items-center p-4">
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300 md:hidden mr-2"
+            className="p-2 -ml-2 rounded-lg hover:bg-white/10 text-slate-400 hover:text-slate-200 transition-colors mr-3 backdrop-blur-md"
           >
             <Menu size={20} />
           </button>
-          <h1 className="text-lg font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2 tracking-tight">
-            SHIBAURA Copilot <span className="text-[10px] uppercase px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400 font-bold tracking-wider">Enterprise</span>
-          </h1>
+          <div className="flex items-center gap-3 bg-black/40 backdrop-blur-xl border border-white/5 px-4 py-2 rounded-full shadow-lg">
+            <div className="w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.8)] animate-pulse"></div>
+            <h1 className="text-sm font-semibold text-slate-200 tracking-wide flex items-center gap-2">
+              SHIBAURA Copilot 
+              <span className="text-[10px] uppercase font-bold text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded-full border border-indigo-500/20">
+                Nexus
+              </span>
+            </h1>
+          </div>
         </header>
 
         {/* Chat Feed */}
-        <div className="flex-1 overflow-y-auto relative z-0">
-          <div className="flex flex-col pb-32">
+        <div className="flex-1 overflow-y-auto relative scroll-smooth no-scrollbar">
+          <div className="flex flex-col pb-48">
             {messages.length === 1 && !loading && (
-              <div className="flex flex-col items-center justify-center mt-32 mb-10 px-4">
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-600 flex items-center justify-center mb-6 shadow-lg shadow-blue-500/20">
-                  <Bot size={32} className="text-white" />
+              <div className="flex flex-col items-center justify-center mt-32 mb-10 px-4 animate-in fade-in slide-in-from-bottom-8 duration-700">
+                <div className="relative w-24 h-24 mb-8 group">
+                  <div className="absolute inset-0 rounded-full bg-indigo-500/20 blur-2xl group-hover:bg-indigo-500/30 transition-all duration-500 animate-pulse"></div>
+                  <div className="relative w-full h-full rounded-3xl bg-gradient-to-br from-[#1E1E2E] to-[#0B0F19] border border-indigo-500/30 flex items-center justify-center shadow-[0_0_30px_rgba(99,102,241,0.2)]">
+                    <Zap size={40} className="text-indigo-400 drop-shadow-[0_0_10px_rgba(99,102,241,0.8)]" />
+                  </div>
                 </div>
-                <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-2 tracking-tight">How can I help you today?</h2>
-                <p className="text-gray-500 text-center max-w-md text-sm leading-relaxed">I'm connected to the Shibaura engineering knowledge base. Ask me about maintenance procedures, safety protocols, or machine specifications.</p>
+                <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-slate-100 to-slate-400 mb-4 tracking-tight text-center">
+                  How can I assist, Commander?
+                </h2>
+                <p className="text-slate-400 text-center max-w-md text-[15px] leading-relaxed">
+                  Query the Shibaura nexus for diagnostics, telemetry, and operational protocols.
+                </p>
               </div>
             )}
 
             {messages.map((msg) => (
-              <div key={msg.id} className={`w-full ${msg.role === 'assistant' ? 'bg-gray-50/50 dark:bg-gray-900/50 border-y border-gray-100 dark:border-gray-800' : ''}`}>
-                <div className="max-w-3xl mx-auto flex gap-4 md:gap-6 px-4 py-6 md:py-8">
-
+              <div key={msg.id} className="w-full animate-in fade-in duration-500">
+                <div className="max-w-3xl mx-auto flex gap-6 px-4 py-8">
                   {/* Avatar */}
-                  <div className="shrink-0 flex flex-col items-center">
+                  <div className="shrink-0 mt-1">
                     {msg.role === 'assistant' ? (
-                      <div className={`w-8 h-8 rounded-xl flex items-center justify-center shadow-sm ${msg.isError ? 'bg-red-500' : 'bg-gradient-to-br from-blue-500 to-cyan-600'}`}>
-                        <Bot size={18} className="text-white" />
+                      <div className={`w-9 h-9 rounded-full flex items-center justify-center shadow-lg border ${msg.isError ? 'bg-red-500/10 text-red-400 border-red-500/30 shadow-red-500/20' : 'bg-gradient-to-br from-indigo-600 to-blue-800 text-white border-indigo-500/50 shadow-[0_0_15px_rgba(99,102,241,0.4)]'}`}>
+                        <Bot size={18} />
                       </div>
                     ) : (
-                      <div className="w-8 h-8 rounded-xl bg-gray-200 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 flex items-center justify-center shadow-sm">
-                        <User size={18} className="text-gray-600 dark:text-gray-300" />
+                      <div className="w-9 h-9 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center shadow-md">
+                        <User size={18} className="text-slate-300" />
                       </div>
                     )}
                   </div>
 
                   {/* Content */}
                   <div className="flex-1 min-w-0 space-y-4 pt-1">
-                    <div className="text-gray-800 dark:text-gray-200 font-normal md:text-[15px] prose dark:prose-invert max-w-none prose-p:leading-relaxed prose-pre:bg-gray-900 prose-pre:text-gray-100 prose-headings:font-bold prose-headings:tracking-tight prose-a:text-blue-600">
+                    <div className="text-slate-200 font-normal text-[15px] prose prose-invert max-w-none prose-p:leading-relaxed prose-pre:bg-black/50 prose-pre:border prose-pre:border-white/10 prose-headings:font-bold prose-headings:text-slate-100">
                       {msg.role === 'user' ? (
-                        <div className="whitespace-pre-wrap">{msg.content}</div>
+                        <div className="whitespace-pre-wrap leading-relaxed">{msg.content}</div>
                       ) : (
-                        <MarkdownWithCitations content={msg.content} citations={msg.citations} />
+                        <MarkdownWithCitations content={msg.content} citations={msg.citations} isTyping={msg.isTyping} />
                       )}
                     </div>
 
-                    {/* Error Retry Button */}
                     {msg.isError && msg.query && (
                       <button
                         onClick={() => handleRetry(msg.query!, msg.id)}
                         disabled={loading}
-                        className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-sm font-medium hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors disabled:opacity-50"
+                        className="flex items-center gap-2 px-4 py-2 mt-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm font-medium hover:bg-red-500/20 transition-colors disabled:opacity-50"
                       >
                         <RotateCcw size={14} />
-                        Retry
+                        Re-initialize Query
                       </button>
-                    )}
-
-                    {/* Citations Footer */}
-                    {msg.role === 'assistant' && msg.citations && msg.citations.length > 0 && (
-                      <div className="mt-8 pt-4">
-                        <CitationBlock citations={msg.citations} confidence={msg.confidence} />
-                      </div>
                     )}
                   </div>
                 </div>
@@ -245,168 +361,128 @@ export default function Copilot() {
             ))}
 
             {loading && (
-              <div className="w-full bg-gray-50/50 dark:bg-gray-900/50 border-y border-gray-100 dark:border-gray-800">
-                <div className="max-w-3xl mx-auto flex gap-4 md:gap-6 px-4 py-6 md:py-8">
-                  <div className="shrink-0 flex flex-col items-center">
-                    <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-600 flex items-center justify-center shadow-sm">
-                      <Bot size={18} className="text-white" />
+              <div className="w-full animate-in fade-in duration-300">
+                <div className="max-w-3xl mx-auto flex gap-6 px-4 py-8">
+                  <div className="shrink-0 mt-1">
+                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-600 to-blue-800 text-white border border-indigo-500/50 flex items-center justify-center shadow-[0_0_15px_rgba(99,102,241,0.4)]">
+                      <Bot size={18} />
                     </div>
                   </div>
-                  <div className="flex-1 flex items-center h-8 gap-1.5">
-                    <div className="w-1.5 h-1.5 rounded-full bg-blue-400 dark:bg-blue-500 animate-bounce" style={{ animationDelay: '0ms' }} />
-                    <div className="w-1.5 h-1.5 rounded-full bg-blue-400 dark:bg-blue-500 animate-bounce" style={{ animationDelay: '150ms' }} />
-                    <div className="w-1.5 h-1.5 rounded-full bg-blue-400 dark:bg-blue-500 animate-bounce" style={{ animationDelay: '300ms' }} />
+                  <div className="flex-1 flex items-center h-9 gap-2">
+                    <div className="w-2 h-2 rounded-full bg-indigo-400 shadow-[0_0_8px_rgba(99,102,241,0.8)] animate-pulse" style={{ animationDelay: '0ms' }} />
+                    <div className="w-2 h-2 rounded-full bg-indigo-400 shadow-[0_0_8px_rgba(99,102,241,0.8)] animate-pulse" style={{ animationDelay: '150ms' }} />
+                    <div className="w-2 h-2 rounded-full bg-indigo-400 shadow-[0_0_8px_rgba(99,102,241,0.8)] animate-pulse" style={{ animationDelay: '300ms' }} />
                   </div>
                 </div>
               </div>
             )}
-
             <div ref={endOfMessagesRef} className="h-4" />
           </div>
         </div>
 
-        {/* Floating Input Area */}
-        <div className="absolute bottom-0 left-0 w-full bg-gradient-to-t from-white via-white/80 to-transparent dark:from-gray-950 dark:via-gray-950/80 pt-10 pb-6 px-4 z-10 pointer-events-none">
+        {/* Floating Input Area (ChatGPT Style Glassmorphism) */}
+        <div className="absolute bottom-0 left-0 w-full bg-gradient-to-t from-[#05050A] via-[#05050A]/90 to-transparent pt-16 pb-8 px-4 z-20 pointer-events-none">
           <div className="max-w-3xl mx-auto pointer-events-auto">
-            <div className="relative flex items-end shadow-2xl shadow-black/5 dark:shadow-black/40 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl overflow-visible focus-within:border-blue-400 dark:focus-within:border-blue-500 transition-colors">
+            <div className="relative flex items-end shadow-[0_0_40px_rgba(0,0,0,0.8)] bg-black/40 backdrop-blur-2xl border border-white/10 rounded-3xl overflow-hidden focus-within:border-indigo-500/50 focus-within:ring-1 focus-within:ring-indigo-500/30 transition-all duration-300 group">
               <textarea
                 ref={textareaRef}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Ask about Shibaura engineering manuals..."
-                className="w-full max-h-[200px] bg-transparent text-gray-800 dark:text-gray-100 placeholder-gray-400 p-4 pr-12 resize-none outline-none text-[15px] leading-relaxed"
+                placeholder="Message SHIBAURA Nexus..."
+                className="w-full max-h-[200px] bg-transparent text-slate-100 placeholder-slate-500 p-5 pr-16 resize-none outline-none text-[15px] leading-relaxed"
                 rows={1}
               />
-              <button
-                onClick={handleSend}
-                disabled={!input.trim() || loading}
-                className="absolute right-3 bottom-3 p-1.5 rounded-xl bg-blue-600 text-white disabled:opacity-0 disabled:scale-75 hover:bg-blue-500 transition-all duration-200"
-              >
-                <Send size={18} className="translate-x-0.5 -translate-y-0.5" />
-              </button>
+              <div className="absolute right-3 bottom-3 flex items-center">
+                <button
+                  onClick={handleSend}
+                  disabled={!input.trim() || loading}
+                  className="p-2.5 rounded-full bg-white text-black disabled:bg-white/10 disabled:text-white/30 hover:bg-slate-200 transition-all duration-300 disabled:shadow-none shadow-[0_0_15px_rgba(255,255,255,0.2)]"
+                >
+                  <Send size={18} className="translate-x-[1px] -translate-y-[1px]" />
+                </button>
+              </div>
             </div>
-            <div className="mt-2 text-center flex items-center justify-center gap-1.5 text-[11px] text-gray-400 font-medium">
-              <ShieldAlert size={12} />
-              AI can make mistakes. Always verify procedures with official documentation.
+            <div className="mt-4 text-center text-[11px] text-slate-500 font-medium tracking-wide">
+              Nexus intelligence can make mistakes. Verify critical telemetry with official logs.
             </div>
           </div>
         </div>
-
       </div>
-    </div>
-  );
-}
 
-// ----------------------------------------------------------------------
-// NotebookLM Style Markdown & Citations
-// ----------------------------------------------------------------------
-
-function MarkdownWithCitations({ content, citations }: { content: string, citations?: any[] }) {
-  // Pre-process markdown to convert [1], 【1】, or [1, 2] into custom markdown links: [[1]](#cite-1)
-  const processedContent = content.replace(/(?:\[|【)(\d+(?:,\s*\d+)*)(?:\]|】)/g, '[$1](#cite-$1)');
-
-  return (
-    <ReactMarkdown
-      components={{
-        a: ({ node, ...props }) => {
-          if (props.href?.startsWith('#cite-')) {
-            const indicesStr = props.href.replace('#cite-', '');
-            const indices = indicesStr.split(',').map(s => parseInt(s.trim(), 10));
-            
-            return (
-              <span className="inline-flex gap-0.5 mx-1 translate-y-[-2px]">
-                {indices.map(idx => (
-                  <CitationBadge key={idx} index={idx} citations={citations} />
-                ))}
-              </span>
-            );
-          }
-          return <a {...props} className="text-blue-500 hover:underline font-medium" />;
-        }
-      }}
-    >
-      {processedContent}
-    </ReactMarkdown>
-  );
-}
-
-function CitationBadge({ index, citations }: { index: number, citations?: any[] }) {
-  const citation = citations?.[index - 1]; // 1-indexed to 0-indexed
-  
-  if (!citation) return <sup className="text-gray-400 font-medium">[{index}]</sup>;
-  
-  return (
-    <span className="group relative inline-block cursor-default">
-      <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-blue-50 border border-blue-200 text-blue-700 dark:bg-blue-900/30 dark:border-blue-800 dark:text-blue-400 text-[10px] font-bold shadow-sm transition-colors group-hover:bg-blue-600 group-hover:text-white group-hover:border-blue-600 dark:group-hover:bg-blue-500 dark:group-hover:text-white">
-        {index}
-      </span>
-      
-      {/* Tooltip */}
-      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-72 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-[100] pointer-events-none">
-        <div className="bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-xl shadow-2xl p-4 text-xs text-left border border-gray-200 dark:border-gray-700 ring-1 ring-black/5">
-          <div className="font-bold text-blue-600 dark:text-blue-400 mb-1.5 line-clamp-1 text-[11px] uppercase tracking-wider">
-            {citation.name || citation.section || 'Source Document'}
-          </div>
-          <div className="text-gray-600 dark:text-gray-300 line-clamp-4 leading-relaxed font-serif italic">
-            "{citation.text_content}"
-          </div>
-          <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-white dark:bg-gray-800 rotate-45 border-r border-b border-gray-200 dark:border-gray-700"></div>
-        </div>
-      </div>
-    </span>
-  );
-}
-
-function CitationBlock({ citations, confidence }: { citations: any[], confidence?: string }) {
-  const [expanded, setExpanded] = useState(false);
-
-  return (
-    <div className="bg-transparent rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden w-full max-w-2xl">
-      <button
-        onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center justify-between p-3 text-xs font-semibold text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+      {/* RIGHT PANE: Citation / Source Details */}
+      <div 
+        className={`${activeCitation ? 'w-[450px] opacity-100 translate-x-0' : 'w-0 opacity-0 translate-x-10'} 
+          transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] shrink-0 flex flex-col z-30 m-4 rounded-3xl bg-black/40 backdrop-blur-3xl border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.5)] overflow-hidden`}
       >
-        <div className="flex items-center gap-2">
-          <FileText size={14} />
-          <span>{citations.length} sources referenced</span>
-          {confidence && (
-            <span className={`px-2 py-0.5 rounded-md text-[9px] uppercase font-bold ml-2 ${
-              confidence === 'High' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
-            }`}>
-              {confidence} Confidence
-            </span>
-          )}
-        </div>
-        {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-      </button>
+        {activeCitation && (
+          <>
+            <header className="flex items-center justify-between p-5 border-b border-white/5 bg-white/5">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center border border-indigo-500/30 shadow-[inset_0_0_10px_rgba(99,102,241,0.2)]">
+                  <FileText size={20} />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-200 text-sm">Source Telemetry</h3>
+                  <p className="text-[10px] text-cyan-400 mt-0.5 uppercase tracking-widest font-bold">Clearance: {activeCitation.access_level || 'System'}</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setActiveCitation(null)}
+                className="p-2 rounded-full hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </header>
+            
+            <div className="flex-1 overflow-y-auto p-6 scroll-smooth no-scrollbar">
+              <h2 className="text-lg font-bold text-transparent bg-clip-text bg-gradient-to-r from-slate-100 to-slate-400 mb-6 leading-snug">
+                {activeCitation.name || 'Extracted Engineering Context'}
+              </h2>
+              
+              {/* Multimodal Image Rendering */}
+              {activeCitation.image_url && (
+                <div className="mb-8 rounded-2xl overflow-hidden border border-white/10 bg-black/60 shadow-2xl group">
+                  <div className="bg-white/5 border-b border-white/10 p-3 flex items-center gap-2">
+                    <ImageIcon size={14} className="text-indigo-400" />
+                    <span className="text-[10px] text-indigo-300 font-bold uppercase tracking-widest">Visual Data</span>
+                  </div>
+                  <div className="relative overflow-hidden">
+                    <img 
+                      src={activeCitation.image_url} 
+                      alt="Document Figure" 
+                      className="w-full h-auto object-contain bg-white/5 group-hover:scale-105 transition-transform duration-700" 
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none"></div>
+                  </div>
+                </div>
+              )}
 
-      {expanded && (
-        <div className="p-4 border-t border-gray-200 dark:border-gray-800 space-y-4 bg-gray-50/50 dark:bg-gray-900/30 max-h-80 overflow-y-auto">
-          {citations.map((c, i) => (
-            <div key={i} className="text-[13px] flex items-start gap-3">
-              <div className="w-5 h-5 rounded-full bg-gray-200 dark:bg-gray-800 text-gray-600 dark:text-gray-400 flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5 border border-gray-300 dark:border-gray-700">
-                {i + 1}
-              </div>
-              <div className="min-w-0 flex-1 pt-0.5">
-                <p className="text-gray-800 dark:text-gray-200 font-semibold leading-tight mb-1">
-                  {c.name || c.section || 'Unknown Source'}
+              <div className="space-y-4">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="h-px bg-gradient-to-r from-transparent via-white/20 to-transparent flex-1"></div>
+                  <span className="text-[10px] text-slate-500 font-bold uppercase tracking-[0.3em]">Extracted Log</span>
+                  <div className="h-px bg-gradient-to-r from-transparent via-white/20 to-transparent flex-1"></div>
+                </div>
+                
+                <p className="text-[14.5px] text-slate-300 leading-relaxed bg-white/5 p-6 rounded-2xl border border-white/10 shadow-[inset_0_0_20px_rgba(0,0,0,0.5)]">
+                  {activeCitation.text_content}
                 </p>
-                {c.text_content && (
-                  <p className="text-gray-500 dark:text-gray-400 text-[12px] line-clamp-2 leading-relaxed">
-                    "{c.text_content.substring(0, 200)}{c.text_content.length > 200 ? '...' : ''}"
-                  </p>
-                )}
-                {c.access_level && (
-                  <span className="inline-block text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400 mt-2">
-                    {c.access_level}
-                  </span>
-                )}
               </div>
+
+              {activeCitation.rrf_score && (
+                <div className="mt-8 flex justify-end">
+                  <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.1)]">
+                    <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_5px_rgba(16,185,129,0.8)]"></div>
+                    <span className="text-[11px] text-emerald-400 font-bold uppercase tracking-widest">Confidence: Optimal</span>
+                  </div>
+                </div>
+              )}
             </div>
-          ))}
-        </div>
-      )}
+          </>
+        )}
+      </div>
+
     </div>
   );
 }
