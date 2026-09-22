@@ -20,45 +20,19 @@ export default function Login() {
 
     try {
       if (mode === 'register') {
-        // Register first
-        const regRes = await fetch('/api/auth/register', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, email, password, role: 'OPERATOR' }),
-        });
-
-        if (!regRes.ok) {
-          const regData = await regRes.json().catch(() => ({}));
-          throw new Error(regData.error || regData.message || 'Registration failed. Username or email may already be taken.');
-        }
-
-        const regData = await regRes.json();
-        if (regData.token) {
-          localStorage.setItem('token', regData.token);
+        // Register (Bypassed for UI Testing since backend is not built)
+        setTimeout(() => {
+          localStorage.setItem('token', 'dummy_test_token');
           navigate('/');
-          return;
-        }
+        }, 500);
+        return;
       }
 
-      // Login
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
-      });
-
-      if (!res.ok) {
-        throw new Error('Invalid credentials');
-      }
-
-      const data = await res.json();
-
-      if (data.token) {
-        localStorage.setItem('token', data.token);
+      // Login (Bypassed for UI Testing since backend is not built)
+      setTimeout(() => {
+        localStorage.setItem('token', 'dummy_test_token');
         navigate('/');
-      } else {
-        setError('Authentication failed. No token received.');
-      }
+      }, 500);
     } catch (err: any) {
       setError(err.message || 'An unexpected error occurred. Please try again.');
     } finally {
