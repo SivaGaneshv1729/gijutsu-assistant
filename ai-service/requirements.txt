@@ -9,3 +9,4 @@ opensearch-py==2.4.2
 python-dotenv==1.0.1
 neo4j==5.17.0
 pymupdf==1.24.1
+duckduckgo-search==6.4.2

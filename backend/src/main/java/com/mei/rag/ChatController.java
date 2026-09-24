@@ -84,6 +84,12 @@ public class ChatController {
             sessionRepository.save(session);
         }
 
+        // Secretly append the language instruction for the AI, without saving it to user history
+        if (ragRequest.getLanguage() != null && !ragRequest.getLanguage().isEmpty()) {
+            String langInstruction = ragRequest.getLanguage().equals("ja") ? "Japanese" : "English";
+            ragRequest.setQuery(ragRequest.getQuery() + "\n\n[SYSTEM INSTRUCTION: You MUST translate and generate your entire response to this query in " + langInstruction + ", matching the persona rules.]");
+        }
+
         // 2. Query AI Service
         RagResponse ragResponse = ragService.queryAiService(ragRequest);
 

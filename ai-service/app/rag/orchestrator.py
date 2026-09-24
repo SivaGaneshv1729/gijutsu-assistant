@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from app.rag.hybrid_retriever import HybridRetriever
 from app.llm.llm_service import llm_service
 from app.rag.prompts import SYSTEM_PROMPT, build_context_block
+from app.rag.external_search import get_external_context
 
 # Roles recognized by the platform (see docs/architecture/security.md)
 ALLOWED_ACCESS_LEVELS = {"PUBLIC", "OPERATOR", "ENGINEER", "MAINTENANCE_ENGINEER", "MANAGER", "ADMIN"}
@@ -34,15 +35,17 @@ class RAGOrchestrator:
         top_chunks = self.retriever.retrieve(user_question, access_level=access_level, top_k=8)
 
         # 2. Hallucination Control: if we have no authorized evidence, say so.
-        if not top_chunks:
-            return {
-                "answer": "I could not find sufficient information in the authorized engineering knowledge base to answer this reliably.",
-                "citations": [],
-                "confidence": "Low"
-            }
-
+        # But wait! Now we have external sources. We don't fail immediately.
+        
         # 3. Assemble prompt context
-        context_block = build_context_block(top_chunks)
+        context_block = ""
+        if top_chunks:
+            context_block = build_context_block(top_chunks)
+        
+        # 3.5. Fetch External Web Summary & Images
+        external_data = get_external_context(user_question, max_results=2)
+        if external_data["text"]:
+            context_block += f"\n\n--- EXTERNAL WEB KNOWLEDGE ---\n{external_data['text']}\n"
 
         messages = [
             {"role": "system", "content": SYSTEM_PROMPT},
@@ -74,6 +77,17 @@ class RAGOrchestrator:
                 "rrf_score": chunk.get("rrf_score"),
                 "image_url": chunk.get("image_url"),
                 "page_number": chunk.get("page_number"),
+            })
+            
+        # 6. Append External Images as Citations
+        for i, img in enumerate(external_data["images"]):
+            citations.append({
+                "id": f"external_img_{i}",
+                "text_content": f"External image from web source: {img['title']}\nSource: {img['source_url']}",
+                "name": img["title"],
+                "access_level": "PUBLIC",
+                "image_url": img["image_url"],
+                "page_number": None,
             })
 
         return {

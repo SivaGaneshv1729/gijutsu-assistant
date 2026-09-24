@@ -102,14 +102,14 @@ export async function getSessionMessages(sessionId: string): Promise<ChatMessage
   return handleResponse<ChatMessage[]>(res);
 }
 
-export async function sendChatMessage(sessionId: string, query: string): Promise<ChatMessage> {
+export async function sendChatMessage(sessionId: string, query: string, language?: string): Promise<ChatMessage> {
   const res = await fetch(`${API_BASE}/api/chat/sessions/${sessionId}/message`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${getToken()}`,
     },
-    body: JSON.stringify({ query }),
+    body: JSON.stringify({ query, language }),
   });
   return handleResponse<ChatMessage>(res);
 }

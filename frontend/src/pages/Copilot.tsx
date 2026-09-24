@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
-import { Settings, FileText, Send, Edit, ThumbsDown, Copy, RotateCcw, MessageSquare, Zap, Paperclip, Users, User, Sidebar, X, Mic, Search, Trash2, ThumbsUp } from 'lucide-react';
+import { Settings, Check, FileText, Send, Edit, ThumbsDown, Copy, RotateCcw, MessageSquare, Zap, Paperclip, Users, User, Sidebar, X, Mic, Search, Trash2, ThumbsUp } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { useNavigate } from 'react-router-dom';
+import { useLanguage } from '../contexts/LanguageContext';
 import type { Message, Citation, ChatSession } from '../types';
 import { listSessions, createSession, deleteSession as apiDeleteSession, getSessionMessages, sendChatMessage } from '../services/api';
 
@@ -44,10 +45,11 @@ function TypewriterText({ text, onComplete }: { text: string; onComplete?: () =>
 }
 
 export default function Copilot() {
+  const { language, setLanguage, t } = useLanguage();
   const [messages, setMessages] = useState<Message[]>([{
     id: '1',
     role: 'assistant',
-    content: 'Greetings, Commander. I am the MEI System. All manuals and diagnostics are loaded. How can I assist you?',
+    content: t('chat.greeting'),
     isTyping: false
   }]);
   const [input, setInput] = useState('');
@@ -55,7 +57,6 @@ export default function Copilot() {
   const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth > 768);
   const [activeCitation, setActiveCitation] = useState<Citation | null>(null);
   const theme = 'dark';
-  const [isChatsModalOpen, setIsChatsModalOpen] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(260);
   const [pdfPanelWidth, setPdfPanelWidth] = useState(450);
   const [isResizingSidebar, setIsResizingSidebar] = useState(false);
@@ -95,6 +96,28 @@ export default function Copilot() {
 
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<Record<string, 'up' | 'down' | null>>({});
+
+  const handleCopy = (id: string, text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedMessageId(id);
+    setTimeout(() => setCopiedMessageId(null), 2000);
+  };
+
+  const handleFeedback = (id: string, type: 'up' | 'down') => {
+    setFeedback(prev => ({ ...prev, [id]: prev[id] === type ? null : type }));
+  };
+
+  const handleRetry = async (msgIndex: number) => {
+    if (loading) return;
+    const userMsg = messages[msgIndex - 1];
+    if (!userMsg || userMsg.role !== 'user') return;
+    const query = userMsg.content;
+    setMessages(prev => prev.slice(0, msgIndex));
+    await sendQuery(query);
+  };
+
 
   useEffect(() => {
     listSessions().then(setSessions).catch(console.error);
@@ -112,7 +135,7 @@ export default function Copilot() {
             citations: m.citationsJson ? JSON.parse(m.citationsJson) : undefined,
           }));
           setMessages(uiMessages.length ? uiMessages : [{
-            id: '1', role: 'assistant', content: 'Greetings, Commander. Session loaded. How can I assist you?', isTyping: false
+            id: '1', role: 'assistant', content: t('chat.sessionLoaded'), isTyping: false
           }]);
         })
         .catch(console.error)
@@ -160,7 +183,7 @@ export default function Copilot() {
         setSessions(prev => [newSession, ...prev]);
       }
 
-      const msg = await sendChatMessage(sessionId, query);
+      const msg = await sendChatMessage(sessionId, query, language);
       const aiMsg: Message = {
         id: msg.id,
         role: 'assistant',
@@ -178,7 +201,7 @@ export default function Copilot() {
       const errorMsg: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: "System communication failure. " + err.message,
+        content: t("chat.systemError") + err.message,
         isError: true,
         query: query,
         isTyping: false
@@ -205,10 +228,7 @@ export default function Copilot() {
     await sendQuery(query);
   };
 
-  /* const handleRetry = async (query: string, errorMsgId: string) => {
-    setMessages(prev => prev.filter(m => m.id !== errorMsgId));
-    await sendQuery(query);
-  }; */
+
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -227,7 +247,7 @@ export default function Copilot() {
     setMessages([{
       id: Date.now().toString(),
       role: 'assistant',
-      content: 'Greetings, Commander. I am the MEI System. All manuals and diagnostics are loaded. How can I assist you?',
+      content: t('chat.greeting'),
       isTyping: false
     }]);
     setActiveCitation(null);
@@ -342,7 +362,9 @@ export default function Copilot() {
     }
 
     return markdownComponent;
-  };  const SidebarItem = ({ icon, label, active, onClick }: { icon: React.ReactNode, label: string, active?: boolean, onClick?: () => void }) => (
+  };
+  
+  const SidebarItem = ({ icon, label, active, onClick }: { icon: React.ReactNode, label: string, active?: boolean, onClick?: () => void }) => (
     <div onClick={onClick} className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm cursor-pointer transition-colors ${active ? 'bg-[#18181b] text-white' : 'text-slate-400 hover:text-white hover:bg-[#18181b]/50'}`}>
         {icon}
         <span>{label}</span>
@@ -366,10 +388,10 @@ export default function Copilot() {
         )}
         {/* Logo and Collapse */}
         <div className="flex items-center justify-between px-5 pt-6 pb-4">
-          <div className="font-bold text-xl tracking-wider text-white">MEI</div>
+          <div className="font-bold text-xl tracking-wider text-white">{t('app.title')}</div>
           <div className="flex items-center gap-3 text-slate-400">
-            <button onClick={handleNewChat} title="New Chat"><Edit size={16} className="hover:text-white transition-colors" /></button>
-            <button onClick={() => setSidebarOpen(false)} title="Close Sidebar"><Sidebar size={16} className="hover:text-white transition-colors" /></button>
+            <button onClick={handleNewChat} title={t("sidebar.newChat")}><Edit size={16} className="hover:text-white transition-colors" /></button>
+            <button onClick={() => setSidebarOpen(false)} title={t("sidebar.close")}><Sidebar size={16} className="hover:text-white transition-colors" /></button>
           </div>
         </div>
         
@@ -377,17 +399,36 @@ export default function Copilot() {
         <div className="px-4 mb-6">
           <div className="bg-[#18181b] rounded-lg px-3 py-2 flex items-center gap-2 border border-white/5 focus-within:border-white/20 transition-colors">
             <Search size={14} className="text-slate-500" />
-            <input type="text" placeholder="Search" className="bg-transparent border-none outline-none text-sm text-slate-300 w-full placeholder-slate-600" />
+            <input type="text" placeholder={t("sidebar.search")} className="bg-transparent border-none outline-none text-sm text-slate-300 w-full placeholder-slate-600" />
           </div>
         </div>
 
-        {/* Navigation / Settings */}
-        <div className="px-3 mb-6 flex-1">
-          <div className="text-[11px] uppercase tracking-wider text-slate-600 font-semibold px-3 mb-2">Menu</div>
+        {/* Menu Items */}
+        <div className="px-3 mb-4">
+          <div className="text-[11px] uppercase tracking-wider text-slate-600 font-semibold px-3 mb-2 shrink-0">{t("sidebar.menu")}</div>
           <div className="space-y-0.5">
-             <SidebarItem icon={<MessageSquare size={16}/>} label="Chats" onClick={() => setIsChatsModalOpen(true)} />
-             <SidebarItem icon={<Settings size={16}/>} label="Settings"  />
-             <SidebarItem icon={<Users size={16}/>} label="Teams" />
+             <SidebarItem icon={<Settings size={16}/>} label={t("sidebar.settings")}  />
+             <SidebarItem icon={<Users size={16}/>} label={t("sidebar.teams")} />
+          </div>
+        </div>
+
+        {/* Recent Chats */}
+        <div className="px-3 mb-6 flex-1 overflow-y-auto no-scrollbar flex flex-col">
+          <div className="text-[11px] uppercase tracking-wider text-slate-600 font-semibold px-3 mb-3 shrink-0">{t("sidebar.recentChats")}</div>
+          <div className="space-y-0.5 flex-1">
+            {sessions.length === 0 ? (
+                <div className="text-center text-slate-500 py-6 text-xs">{t("sidebar.noChats")}</div>
+            ) : (
+                sessions.map(item => (
+                    <div key={item.id} onClick={() => { setCurrentSessionId(item.id); }} className={`flex items-center justify-between group cursor-pointer px-3 py-2 rounded-lg text-[13px] transition-colors ${currentSessionId === item.id ? 'bg-[#18181b] text-white' : 'text-slate-400 hover:text-white hover:bg-[#18181b]/50'}`}>
+                        <div className="flex items-center gap-3 truncate pr-2">
+                            <MessageSquare size={14} className={currentSessionId === item.id ? 'text-blue-500 shrink-0' : 'text-slate-500 shrink-0'} />
+                            <span className="truncate">{item.title}</span>
+                        </div>
+                        <button onClick={(e) => { e.stopPropagation(); deleteHistoryItem(e, item.id); }} className="opacity-0 group-hover:opacity-100 text-slate-500 hover:text-red-400 transition-colors shrink-0"><Trash2 size={14}/></button>
+                    </div>
+                ))
+            )}
           </div>
         </div>
         
@@ -396,7 +437,7 @@ export default function Copilot() {
             <div className="mt-4 flex items-center justify-between px-2 cursor-pointer group" onClick={handleLogout}>
                 <div className="flex items-center gap-3">
                     <div className="w-7 h-7 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center group-hover:border-slate-500 transition-colors"><User size={14} className="text-slate-300"/></div>
-                    <span className="text-sm text-slate-400 group-hover:text-white transition-colors">Log out</span>
+                    <span className="text-sm text-slate-400 group-hover:text-white transition-colors">{t("sidebar.logout")}</span>
                 </div>
             </div>
         </div>
@@ -413,9 +454,14 @@ export default function Copilot() {
           
           <div className="flex items-center gap-4">
 
-             <div className="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center overflow-hidden">
-                <img src="https://ui-avatars.com/api/?name=User&background=1e293b&color=fff" alt="User" className="w-full h-full object-cover"/>
-             </div>
+             
+             <button 
+                onClick={() => setLanguage(language === 'en' ? 'ja' : 'en')}
+                className="w-9 h-9 rounded-full bg-slate-800 border border-slate-600 hover:border-slate-400 flex items-center justify-center text-[13px] font-bold tracking-widest text-slate-200 transition-all shadow-sm hover:scale-105 cursor-pointer"
+                title="Change Language"
+             >
+                {language === 'en' ? 'US' : 'JA'}
+             </button>
           </div>
         </div>
 
@@ -427,7 +473,7 @@ export default function Copilot() {
                    How can I help you today?
                </div>
             )}
-            {messages.map((msg) => (
+            {messages.map((msg, index) => (
                 <div key={msg.id} className={`w-full flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                     {msg.role === 'user' ? (
                         <div className="bg-[#1e293b]/80 backdrop-blur-sm text-slate-200 text-[14px] leading-relaxed px-5 py-4 rounded-2xl rounded-tr-sm max-w-[80%] border border-white/5 shadow-md">
@@ -442,10 +488,30 @@ export default function Copilot() {
                             </div>
                             {/* Action Row */}
                             <div className="flex items-center gap-3 text-slate-500 mt-1">
-                                <button className="hover:text-slate-300 transition-colors"><ThumbsUp size={14}/></button>
-                                <button className="hover:text-slate-300 transition-colors"><ThumbsDown size={14}/></button>
-                                <button className="hover:text-slate-300 transition-colors"><Copy size={14}/></button>
-                                <button className="hover:text-slate-300 transition-colors"><RotateCcw size={14}/></button>
+                                <button 
+                                  onClick={() => handleFeedback(msg.id, 'up')} 
+                                  className={`transition-colors ${feedback[msg.id] === 'up' ? 'text-blue-500' : 'hover:text-slate-300'}`}
+                                  title={t("action.good")}
+                                ><ThumbsUp size={14}/></button>
+                                <button 
+                                  onClick={() => handleFeedback(msg.id, 'down')} 
+                                  className={`transition-colors ${feedback[msg.id] === 'down' ? 'text-red-500' : 'hover:text-slate-300'}`}
+                                  title={t("action.bad")}
+                                ><ThumbsDown size={14}/></button>
+                                <button 
+                                  onClick={() => handleCopy(msg.id, msg.content)} 
+                                  className="hover:text-slate-300 transition-colors"
+                                  title={t("action.copy")}
+                                >
+                                  {copiedMessageId === msg.id ? <Check size={14} className="text-green-500" /> : <Copy size={14}/>}
+                                </button>
+                                {index === messages.length - 1 && (
+                                  <button 
+                                    onClick={() => handleRetry(index)} 
+                                    className="hover:text-slate-300 transition-colors"
+                                    title={t("action.retry")}
+                                  ><RotateCcw size={14}/></button>
+                                )}
                             </div>
                         </div>
                     )}
@@ -473,7 +539,7 @@ export default function Copilot() {
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     onKeyDown={handleKeyDown}
-                    placeholder="Ask me something"
+                    placeholder={t("chat.placeholder")}
                     className="flex-1 bg-transparent text-slate-200 placeholder-slate-600 px-4 py-2 resize-none outline-none text-[15px] max-h-[150px]"
                     rows={1}
                 />
@@ -502,7 +568,7 @@ export default function Copilot() {
                     <div className="flex items-center gap-3 text-slate-300 min-w-0">
                         <FileText size={16} className="text-blue-500 shrink-0" />
                         <span className="font-medium text-[13px] truncate">{activeCitation.name || 'Source Document'}</span>
-                        {activeCitation.page_number && <span className="text-[10px] text-slate-400 bg-[#1e293b] px-2 py-0.5 rounded-full shrink-0 border border-white/5">Pg {activeCitation.page_number}</span>}
+                        {activeCitation.page_number && <span className="text-[10px] text-slate-400 bg-[#1e293b] px-2 py-0.5 rounded-full shrink-0 border border-white/5">{t('pdf.page')} {activeCitation.page_number}</span>}
                     </div>
                     <button onClick={() => setActiveCitation(null)} className="text-slate-500 hover:text-white p-2 rounded-lg hover:bg-white/5 transition-colors shrink-0"><X size={16}/></button>
                 </div>
@@ -514,7 +580,7 @@ export default function Copilot() {
                             title="PDF Viewer"
                         />
                         <div className="shrink-0 border-t border-white/5 bg-[#09090b] max-h-[250px] overflow-y-auto p-5 no-scrollbar">
-                            <div className="text-[10px] text-slate-500 uppercase font-bold tracking-widest mb-3">Extracted Content</div>
+                            <div className="text-[10px] text-slate-500 uppercase font-bold tracking-widest mb-3">{t('pdf.extractedContent')}</div>
                             <div className="text-[13px] text-slate-300 leading-relaxed border-l-[3px] border-white/20 pl-4 py-1">
                                 {activeCitation.text_content}
                             </div>
@@ -525,7 +591,7 @@ export default function Copilot() {
                         {activeCitation.image_url && (
                             <img src={activeCitation.image_url} className="w-full rounded-lg mb-6 border border-white/5 shadow-lg" alt="Citation" />
                         )}
-                        <div className="text-[10px] text-slate-500 uppercase font-bold tracking-widest mb-3">Extracted Content</div>
+                        <div className="text-[10px] text-slate-500 uppercase font-bold tracking-widest mb-3">{t('pdf.extractedContent')}</div>
                         <div className="text-[14px] text-slate-300 leading-relaxed bg-[#1e293b]/30 p-5 rounded-2xl border border-white/5">
                             {activeCitation.text_content}
                         </div>
@@ -536,35 +602,7 @@ export default function Copilot() {
       </div>
 
 
-      {/* Chats Modal */}
-      {isChatsModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsChatsModalOpen(false)}></div>
-          <div className="relative bg-[#09090b] w-[400px] max-h-[80vh] rounded-2xl shadow-2xl border border-white/10 overflow-hidden flex flex-col">
-            <div className="flex items-center justify-between p-5 border-b border-white/5">
-              <h2 className="font-bold text-white text-lg">Your Chats</h2>
-              <button onClick={() => setIsChatsModalOpen(false)} className="p-2 rounded-full hover:bg-white/5 text-slate-400 transition-colors">
-                <X size={20} />
-              </button>
-            </div>
-            <div className="flex-1 overflow-y-auto p-3 no-scrollbar space-y-1">
-                {sessions.length === 0 ? (
-                    <div className="text-center text-slate-500 py-10 text-sm">No recent chats</div>
-                ) : (
-                    sessions.map(item => (
-                        <div key={item.id} onClick={() => { setCurrentSessionId(item.id); setIsChatsModalOpen(false); }} className={`flex items-center justify-between group cursor-pointer px-4 py-3 rounded-xl text-[14px] text-slate-300 hover:bg-[#18181b] hover:text-white transition-colors ${currentSessionId === item.id ? 'bg-[#18181b] text-white font-medium border border-white/5' : 'border border-transparent'}`}>
-                            <div className="flex items-center gap-3 truncate">
-                                <MessageSquare size={16} className={currentSessionId === item.id ? 'text-blue-500' : 'text-slate-500'} />
-                                <span className="truncate">{item.title}</span>
-                            </div>
-                            <button onClick={(e) => { e.stopPropagation(); deleteHistoryItem(e, item.id); }} className="opacity-0 group-hover:opacity-100 text-slate-500 hover:text-red-400 transition-colors"><Trash2 size={14}/></button>
-                        </div>
-                    ))
-                )}
-            </div>
-          </div>
-        </div>
-      )}
+
     </div>
   );
 }
