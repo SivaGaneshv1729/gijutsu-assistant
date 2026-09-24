@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Lock, User, Mail, ArrowRight } from 'lucide-react';
+import { login, register } from '../services/api';
 
 type AuthMode = 'login' | 'register';
 
@@ -20,19 +21,15 @@ export default function Login() {
 
     try {
       if (mode === 'register') {
-        // Register (Bypassed for UI Testing since backend is not built)
-        setTimeout(() => {
-          localStorage.setItem('token', 'dummy_test_token');
-          navigate('/');
-        }, 500);
+        const { token } = await register(username, email, password);
+        localStorage.setItem('token', token);
+        navigate('/');
         return;
       }
 
-      // Login (Bypassed for UI Testing since backend is not built)
-      setTimeout(() => {
-        localStorage.setItem('token', 'dummy_test_token');
-        navigate('/');
-      }, 500);
+      const { token } = await login(username, password);
+      localStorage.setItem('token', token);
+      navigate('/');
     } catch (err: any) {
       setError(err.message || 'An unexpected error occurred. Please try again.');
     } finally {
@@ -49,7 +46,7 @@ export default function Login() {
       <div className="w-full max-w-md p-8 bg-gray-900/80 backdrop-blur-xl border border-gray-800 rounded-2xl shadow-2xl z-10">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
-            SHIBAURA
+            MEI
           </h1>
           <p className="text-sm text-gray-500 mt-2 tracking-widest uppercase font-semibold">Engineering Intelligence</p>
         </div>

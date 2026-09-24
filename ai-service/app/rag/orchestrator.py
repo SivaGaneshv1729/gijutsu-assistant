@@ -25,7 +25,7 @@ class RAGOrchestrator:
         greetings = {"hi", "hello", "hey", "good morning", "good afternoon", "hi there", "hello there", "holla", "hola", "greetings"}
         if user_question.strip().lower() in greetings:
             return {
-                "answer": "Hello! I am the SHIBAURA Engineering Intelligence assistant. How can I help you with your machine documentation today?",
+                "answer": "Hello! I am the MEI assistant. How can I help you with your machine documentation today?",
                 "citations": [],
                 "confidence": "High"
             }

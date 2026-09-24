@@ -6,7 +6,7 @@ from app.rag.database import init_db
 from fastapi.staticfiles import StaticFiles
 
 app = FastAPI(
-    title="SHIBAURA Engineering Intelligence AI Service",
+    title="MEI AI Service",
     description="AI backend for Hybrid RAG, Embeddings, and Graph retrieval",
     version="1.0.0"
 )

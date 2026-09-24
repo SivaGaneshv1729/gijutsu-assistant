@@ -21,7 +21,7 @@ manufacturing-engineering-intelligence/
 ├── frontend/            # React + Vite (Web UI)
 ├── ingestion/           # Python (PDF Parsing & Vector Embedding)
 ├── database/            # SQL Migrations (pgvector schema)
-├── knowledge-base/      # Raw technical manuals and PDFs (e.g., Shibaura E101)
+├── knowledge-base/      # Raw technical manuals and PDFs (e.g., MEI E101)
 ├── docs/                # Setup, architecture, API reference, demo script, ADRs
 ├── docker-compose.yml   # Infrastructure orchestration
 └── README.md            # Project documentation

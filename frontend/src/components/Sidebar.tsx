@@ -32,7 +32,7 @@ export default function Sidebar() {
     <div className="w-64 h-screen glass-panel flex flex-col fixed left-0 top-0 z-10">
       <div className="p-6">
         <h1 className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-          SHIBAURA
+          MEI
         </h1>
         <p className="text-[10px] text-textMuted tracking-widest font-bold mt-1 uppercase">Engineering Intelligence</p>
       </div>
