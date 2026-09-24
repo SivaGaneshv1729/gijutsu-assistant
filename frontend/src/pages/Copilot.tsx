@@ -56,6 +56,41 @@ export default function Copilot() {
   const [activeCitation, setActiveCitation] = useState<Citation | null>(null);
   const theme = 'dark';
   const [isChatsModalOpen, setIsChatsModalOpen] = useState(false);
+  const [sidebarWidth, setSidebarWidth] = useState(260);
+  const [pdfPanelWidth, setPdfPanelWidth] = useState(450);
+  const [isResizingSidebar, setIsResizingSidebar] = useState(false);
+  const [isResizingPdf, setIsResizingPdf] = useState(false);
+  
+  const startResizingSidebar = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizingSidebar(true);
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      setSidebarWidth(Math.max(150, Math.min(moveEvent.clientX, 600)));
+    };
+    const handleMouseUp = () => {
+      setIsResizingSidebar(false);
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  };
+
+  const startResizingPdfPanel = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizingPdf(true);
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const newWidth = window.innerWidth - moveEvent.clientX;
+      setPdfPanelWidth(Math.max(300, Math.min(newWidth, window.innerWidth - 300)));
+    };
+    const handleMouseUp = () => {
+      setIsResizingPdf(false);
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  };
   // const settingsOpen = false;
 
   const [sessions, setSessions] = useState<ChatSession[]>([]);
@@ -318,7 +353,17 @@ export default function Copilot() {
     <div className={`flex h-screen bg-[#09090b] text-slate-200 font-sans w-full overflow-hidden ${theme}`}>
       
       {/* LEFT SIDEBAR */}
-      <div className={`${sidebarOpen ? 'w-[260px]' : 'w-0'} transition-all duration-300 ease-in-out shrink-0 flex flex-col bg-[#09090b] border-r border-white/5 h-full overflow-hidden z-30`}>
+      <div 
+        style={{ width: sidebarOpen ? sidebarWidth : 0, transition: isResizingSidebar ? 'none' : 'width 0.3s ease-in-out' }}
+        className={`relative shrink-0 flex flex-col bg-[#09090b] border-r border-white/5 h-full overflow-hidden z-30`}
+      >
+        {/* Resize Handler */}
+        {sidebarOpen && (
+           <div
+             onMouseDown={startResizingSidebar}
+             className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-blue-500/50 z-50 transition-colors"
+           />
+        )}
         {/* Logo and Collapse */}
         <div className="flex items-center justify-between px-5 pt-6 pb-4">
           <div className="font-bold text-xl tracking-wider text-white">MEI</div>
@@ -439,8 +484,18 @@ export default function Copilot() {
       </div>
 
       {/* RIGHT SIDEBAR (PDF PANEL) */}
-      <div className={`${activeCitation ? 'w-full md:w-[450px] border-l border-white/5 shadow-[-20px_0_50px_rgba(0,0,0,0.5)]' : 'w-0 border-l-0'} 
-          absolute md:relative right-0 transition-all duration-300 ease-in-out shrink-0 flex flex-col bg-[#09090b] h-full overflow-hidden z-40`}>
+      <div 
+        style={{ width: activeCitation ? pdfPanelWidth : 0, transition: isResizingPdf ? 'none' : 'width 0.3s ease-in-out' }}
+        className={`${activeCitation ? 'border-l border-white/5 shadow-[-20px_0_50px_rgba(0,0,0,0.5)]' : 'border-l-0'} 
+          relative right-0 shrink-0 flex flex-col bg-[#09090b] h-full overflow-hidden z-40 max-w-full`}
+      >
+        {/* Resize Handler */}
+        {activeCitation && (
+           <div
+             onMouseDown={startResizingPdfPanel}
+             className="absolute left-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-blue-500/50 z-50 transition-colors"
+           />
+        )}
         {activeCitation && (
             <>
                 <div className="flex items-center justify-between px-5 h-16 border-b border-white/5 shrink-0 bg-[#09090b]">
