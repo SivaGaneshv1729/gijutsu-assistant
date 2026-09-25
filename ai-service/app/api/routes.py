@@ -60,7 +60,8 @@ def query_rag(request: QueryRequest, db: Session = Depends(get_db)):
         orchestrator = RAGOrchestrator(db)
         result = orchestrator.query(
             user_question=request.query,
-            access_level=request.access_level
+            access_level=request.access_level,
+            language=request.language
         )
         return result
     except Exception as e:

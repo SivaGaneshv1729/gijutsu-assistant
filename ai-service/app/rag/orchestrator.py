@@ -12,7 +12,7 @@ class RAGOrchestrator:
     def __init__(self, db: Session):
         self.retriever = HybridRetriever(db)
 
-    def query(self, user_question: str, access_level: str = "OPERATOR") -> Dict[str, Any]:
+    def query(self, user_question: str, access_level: str = "OPERATOR", language: str = "en") -> Dict[str, Any]:
         """
         Orchestrates the entire RAG pipeline for a given user query, honouring the
         caller's access level so only authorized content is retrieved (ADR-005).
@@ -25,6 +25,12 @@ class RAGOrchestrator:
         # 1. Short-circuit for simple greetings
         greetings = {"hi", "hello", "hey", "good morning", "good afternoon", "hi there", "hello there", "holla", "hola", "greetings"}
         if user_question.strip().lower() in greetings:
+            if language == "ja":
+                return {
+                    "answer": "こんにちは！私はMEIアシスタントです。本日はどのような機械のドキュメントについてお手伝いしましょうか？",
+                    "citations": [],
+                    "confidence": "High"
+                }
             return {
                 "answer": "Hello! I am the MEI assistant. How can I help you with your machine documentation today?",
                 "citations": [],
@@ -47,9 +53,11 @@ class RAGOrchestrator:
         if external_data["text"]:
             context_block += f"\n\n--- EXTERNAL WEB KNOWLEDGE ---\n{external_data['text']}\n"
 
+        lang_instruction = f"CRITICAL REQUIREMENT: You MUST answer the user in JAPANESE (日本語) exclusively." if language == "ja" else f"CRITICAL REQUIREMENT: You MUST answer the user in ENGLISH exclusively."
+
         messages = [
             {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": f"{context_block}\n\nUSER QUESTION: {user_question}"}
+            {"role": "user", "content": f"{context_block}\n\nUSER QUESTION: {user_question}\n\n{lang_instruction}"}
         ]
 
         # 4. Generate LLM response (local Ollama). If the lightweight fallback

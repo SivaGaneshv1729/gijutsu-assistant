@@ -1,29 +1,62 @@
-from duckduckgo_search import DDGS
+import requests
 
 def get_external_context(query: str, max_results: int = 2):
     """
-    Fetches web summaries and images using DuckDuckGo scraping.
-    Requires no API keys.
+    Fetches web summaries and images using the Wikipedia API.
+    Extremely reliable, requires no API keys, and has no strict rate limits.
     """
     results = {"text": "", "images": []}
+    
+    headers = {
+        "User-Agent": "MEI-Assistant/1.0 (internal-tools@example.com)"
+    }
+    search_url = "https://en.wikipedia.org/w/api.php"
+    
     try:
-        ddgs = DDGS()
+        # 1. Fetch text summary and get best title
+        search_params = {
+            "action": "query",
+            "list": "search",
+            "srsearch": query,
+            "format": "json",
+            "utf8": 1,
+            "srlimit": max_results
+        }
         
-        # 1. Fetch text summary
-        text_results = list(ddgs.text(query, max_results=1))
-        if text_results:
-            results["text"] = f"[External Web Source] {text_results[0].get('title')}: {text_results[0].get('body')}"
+        res = requests.get(search_url, params=search_params, headers=headers).json()
+        search_results = res.get("query", {}).get("search", [])
         
-        # 2. Fetch images
-        image_results = list(ddgs.images(query, max_results=max_results))
-        for img in image_results:
-            results["images"].append({
-                "title": img.get("title", "External Image"),
-                "image_url": img.get("image", ""),
-                "source_url": img.get("url", "")
-            })
+        if not search_results:
+            return results
             
+        best_match = search_results[0]
+        title = best_match["title"]
+        snippet = best_match["snippet"].replace('<span class="searchmatch">', '').replace('</span>', '')
+        
+        results["text"] = f"[External Web Source - Wikipedia] {title}: {snippet}"
+        
+        # 2. Fetch image for the top title
+        img_params = {
+            "action": "query",
+            "titles": title,
+            "prop": "pageimages",
+            "format": "json",
+            "pithumbsize": 800
+        }
+        
+        img_res = requests.get(search_url, params=img_params, headers=headers).json()
+        pages = img_res.get("query", {}).get("pages", {})
+        
+        for page_id, page_info in pages.items():
+            if "thumbnail" in page_info:
+                img_url = page_info["thumbnail"]["source"]
+                results["images"].append({
+                    "title": f"Wikipedia: {title}",
+                    "image_url": img_url,
+                    "source_url": f"https://en.wikipedia.org/wiki/{title.replace(' ', '_')}"
+                })
+                
     except Exception as e:
-        print(f"Error fetching from DuckDuckGo: {e}")
+        print(f"Error fetching from Wikipedia: {e}")
     
     return results
