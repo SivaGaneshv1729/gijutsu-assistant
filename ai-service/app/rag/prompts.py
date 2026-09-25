@@ -21,7 +21,8 @@ IMAGE HANDLING & DYNAMIC VISUALS:
 Never ignore media URLs. Always show them if provided in the context block.
 
 2. **Generated Diagrams (Mermaid.js)**: If a visual would help explain the process, generate a SIMPLE, standard Mermaid.js flowchart.
-- DO NOT use complex experimental features. Only use basic `graph TD` or `sequenceDiagram`.
+- DO NOT use complex experimental features, and DO NOT use `subgraph` syntax as it frequently causes parsing errors.
+- Only use extremely basic `graph TD` with simple nodes and links (e.g. `A[Name] --> B[Name]`).
 - Keep the syntax strictly standard and simple to avoid parsing errors.
 - IMPORTANT: You MUST wrap the Mermaid code in a markdown code block with the language set to `mermaid`.
   Example:
