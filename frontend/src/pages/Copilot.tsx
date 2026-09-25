@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { MermaidRenderer } from '../components/MermaidRenderer';
-import { Settings, Check, FileText, Send, Edit, ThumbsDown, Copy, RotateCcw, MessageSquare, Zap, Paperclip, Users, User, Sidebar, X, Mic, Search, Trash2, ThumbsUp } from 'lucide-react';
+import { Settings, Check, FileText, Send, Edit, ThumbsDown, Copy, RotateCcw, MessageSquare, Zap, Paperclip, Users, User, Sidebar, X, Mic, Search, Trash2, ThumbsUp, GitBranch, BarChart2, BookOpen, Filter } from 'lucide-react';
+import { listDocuments } from '../services/api';
 import ReactMarkdown from 'react-markdown';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -171,6 +172,8 @@ export default function Copilot() {
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<Record<string, 'up' | 'down' | null>>({});
+  const [focusedDocId, setFocusedDocId] = useState<string | null>(null);
+  const [documents, setDocuments] = useState<any[]>([]);
 
   const handleCopy = (id: string, text: string) => {
     navigator.clipboard.writeText(text);
@@ -194,6 +197,7 @@ export default function Copilot() {
 
   useEffect(() => {
     listSessions().then(setSessions).catch(console.error);
+    listDocuments().then(setDocuments).catch(console.error);
   }, []);
 
   useEffect(() => {
@@ -492,7 +496,35 @@ export default function Copilot() {
           <div className="text-[11px] uppercase tracking-wider text-slate-600 font-semibold px-3 mb-2 shrink-0">{t("sidebar.menu")}</div>
           <div className="space-y-0.5">
              <SidebarItem icon={<Settings size={16}/>} label={t("sidebar.settings")} onClick={() => setSettingsOpen(true)} />
-             <SidebarItem icon={<Users size={16}/>} label={t("sidebar.teams")} />
+             <SidebarItem icon={<GitBranch size={16}/>} label="Knowledge Graph" onClick={() => navigate('/graph')} />
+             <SidebarItem icon={<BarChart2 size={16}/>} label="Analytics" onClick={() => navigate('/analytics')} />
+          </div>
+        </div>
+
+        {/* Focused Document Mode */}
+        <div className="px-3 mb-4">
+          <div className="text-[11px] uppercase tracking-wider text-slate-600 font-semibold px-3 mb-2 shrink-0 flex items-center gap-2"><BookOpen size={10}/> Focused Doc</div>
+          <div className="space-y-0.5 max-h-40 overflow-y-auto no-scrollbar">
+            <div
+              onClick={() => setFocusedDocId(null)}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs cursor-pointer transition-colors ${
+                focusedDocId === null ? 'bg-blue-600/20 text-blue-400 border border-blue-500/20' : 'text-slate-500 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              <Filter size={10}/> All Documents
+            </div>
+            {documents.map((doc: any) => (
+              <div
+                key={doc.id}
+                onClick={() => setFocusedDocId(doc.id)}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs cursor-pointer transition-colors ${
+                  focusedDocId === doc.id ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/20' : 'text-slate-500 hover:text-white hover:bg-white/5'
+                }`}
+              >
+                <FileText size={10} className="shrink-0"/>
+                <span className="truncate">{doc.name || doc.filename || doc.id}</span>
+              </div>
+            ))}
           </div>
         </div>
 
