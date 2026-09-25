@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { MermaidRenderer } from '../components/MermaidRenderer';
 import { Settings, Check, FileText, Send, Edit, ThumbsDown, Copy, RotateCcw, MessageSquare, Zap, Paperclip, Users, User, Sidebar, X, Mic, Search, Trash2, ThumbsUp } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { useNavigate } from 'react-router-dom';
@@ -348,7 +349,18 @@ export default function Copilot() {
                 </div>
               )}
             </div>
-          )
+          ),
+          code: ({ node, inline, className, children, ...props }: any) => {
+            const match = /language-(\w+)/.exec(className || '');
+            if (!inline && match && match[1] === 'mermaid') {
+              return <MermaidRenderer chart={String(children).replace(/\n$/, '')} />;
+            }
+            return (
+              <code className={className} {...props}>
+                {children}
+              </code>
+            );
+          }
         }}
       >
         {processedContent}

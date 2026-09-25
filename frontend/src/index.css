@@ -28,3 +28,13 @@
 ::-webkit-scrollbar-thumb:hover {
   @apply bg-secondary;
 }
+
+/* Hide Mermaid global error injections */
+body > [id^='dmermaid'], 
+body > [id^='mermaid-error'], 
+body > svg:has(.error-icon),
+.error-icon { 
+  display: none !important; 
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
