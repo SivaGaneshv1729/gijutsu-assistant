@@ -30,7 +30,6 @@ export default function KnowledgeGraph() {
   const [graphData, setGraphData] = useState<GraphData>({ nodes: [], links: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
   const [zoom, setZoom] = useState(1);
   const animRef = useRef<number>(0);
   const nodesRef = useRef<any[]>([]);
@@ -43,13 +42,11 @@ export default function KnowledgeGraph() {
     setError(null);
     try {
       const token = localStorage.getItem('token');
-      const [docsRes, statsRes] = await Promise.all([
+      const [docsRes] = await Promise.all([
         fetch('/api/knowledge/documents', { headers: { Authorization: `Bearer ${token}` } }),
-        fetch('/api/analytics/documents', { headers: { Authorization: `Bearer ${token}` } }),
       ]);
 
       const docs: any[] = docsRes.ok ? await docsRes.json() : [];
-      const stats: any = statsRes.ok ? await statsRes.json() : {};
 
       const nodes: GraphNode[] = [];
       const links: GraphLink[] = [];

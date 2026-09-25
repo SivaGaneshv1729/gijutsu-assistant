@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { MermaidRenderer } from '../components/MermaidRenderer';
-import { Settings, Check, FileText, Send, Edit, ThumbsDown, Copy, RotateCcw, MessageSquare, Zap, Paperclip, Users, User, Sidebar, X, Mic, Search, Trash2, ThumbsUp, GitBranch, BarChart2, BookOpen, Filter } from 'lucide-react';
+import { Settings, Check, FileText, Send, Edit, ThumbsDown, Copy, RotateCcw, MessageSquare, Zap, Paperclip, User, Sidebar, X, Mic, Search, Trash2, ThumbsUp, GitBranch, BarChart2, BookOpen, Filter } from 'lucide-react';
 import { listDocuments } from '../services/api';
 import ReactMarkdown from 'react-markdown';
 import { useNavigate } from 'react-router-dom';

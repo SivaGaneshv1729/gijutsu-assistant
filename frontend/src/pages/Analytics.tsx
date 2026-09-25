@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
-  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
 import { BarChart2, FileText, Database, Users, TrendingUp, ThumbsUp, ThumbsDown, Zap } from 'lucide-react';
 
@@ -72,10 +72,7 @@ export default function Analytics() {
     value: a.count,
   })) || [];
 
-  const typeData = docStats?.by_type?.map((t: any) => ({
-    name: t.type,
-    value: t.count,
-  })) || [];
+
 
   return (
     <div className="h-full bg-[#09090b] text-slate-200 overflow-y-auto p-6 no-scrollbar">
