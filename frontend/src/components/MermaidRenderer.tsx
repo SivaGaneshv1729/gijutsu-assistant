@@ -62,7 +62,6 @@ export const MermaidRenderer: React.FC<MermaidRendererProps> = ({ chart }) => {
         
         if (isMounted) {
           const safeChart = chart.replace(/</g, '&lt;').replace(/>/g, '&gt;');
-          const errorMsg = error?.message || String(error);
           
           // During streaming, it will frequently fail due to incomplete syntax.
           // Show a subtle loading state instead of a harsh red error if it's likely streaming.
