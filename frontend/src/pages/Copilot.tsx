@@ -57,11 +57,83 @@ export default function Copilot() {
   const [loading, setLoading] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth > 768);
   const [activeCitation, setActiveCitation] = useState<Citation | null>(null);
-  const theme = 'dark';
+  const [theme, setTheme] = useState('dark');
   const [sidebarWidth, setSidebarWidth] = useState(260);
   const [pdfPanelWidth, setPdfPanelWidth] = useState(450);
   const [isResizingSidebar, setIsResizingSidebar] = useState(false);
   const [isResizingPdf, setIsResizingPdf] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  
+  const [isListening, setIsListening] = useState(false);
+  const recognitionRef = useRef<any>(null);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploading, setIsUploading] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      if (SpeechRecognition) {
+        recognitionRef.current = new SpeechRecognition();
+        recognitionRef.current.continuous = false;
+        recognitionRef.current.interimResults = true;
+        recognitionRef.current.onresult = (e: any) => {
+          let finalTranscript = '';
+          for (let i = e.resultIndex; i < e.results.length; ++i) {
+            if (e.results[i].isFinal) finalTranscript += e.results[i][0].transcript;
+          }
+          if (finalTranscript) setInput(prev => prev + ' ' + finalTranscript.trim());
+        };
+        recognitionRef.current.onend = () => setIsListening(false);
+      }
+    }
+  }, []);
+
+  const toggleListen = () => {
+    if (isListening) {
+      recognitionRef.current?.stop();
+    } else {
+      setIsListening(true);
+      recognitionRef.current?.start();
+    }
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const res = await fetch('/api/documents/upload', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: formData
+      });
+
+      if (!res.ok) throw new Error('Upload failed');
+      const data = await res.json();
+      
+      const sysMsg: Message = {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: `**System:** Attached document \`${data.fileName}\` to the knowledge base. It is now available for querying!`,
+        isTyping: false
+      };
+      setMessages(prev => [...prev, sysMsg]);
+      
+    } catch (err) {
+      console.error(err);
+      alert('Upload failed.');
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
   
   const startResizingSidebar = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -419,7 +491,7 @@ export default function Copilot() {
         <div className="px-3 mb-4">
           <div className="text-[11px] uppercase tracking-wider text-slate-600 font-semibold px-3 mb-2 shrink-0">{t("sidebar.menu")}</div>
           <div className="space-y-0.5">
-             <SidebarItem icon={<Settings size={16}/>} label={t("sidebar.settings")}  />
+             <SidebarItem icon={<Settings size={16}/>} label={t("sidebar.settings")} onClick={() => setSettingsOpen(true)} />
              <SidebarItem icon={<Users size={16}/>} label={t("sidebar.teams")} />
           </div>
         </div>
@@ -545,7 +617,8 @@ export default function Copilot() {
         {/* Floating Input Area */}
         <div className="absolute bottom-8 left-0 w-full flex justify-center px-4 pointer-events-none z-20">
             <div className="w-full max-w-3xl bg-[#1e293b]/90 backdrop-blur-xl border border-white/10 rounded-full flex items-center px-4 py-2.5 shadow-[0_10px_40px_rgba(0,0,0,0.5)] pointer-events-auto transition-all focus-within:bg-[#1e293b] focus-within:border-white/20">
-                <button className="p-2 text-slate-500 hover:text-slate-300 transition-colors"><Paperclip size={18} /></button>
+                <button onClick={() => fileInputRef.current?.click()} disabled={isUploading} className={`p-2 transition-colors ${isUploading ? 'text-blue-500 animate-pulse' : 'text-slate-500 hover:text-slate-300'}`}><Paperclip size={18} /></button>
+                <input type="file" ref={fileInputRef} className="hidden" accept=".pdf,.txt,.md" onChange={handleFileUpload} />
                 <textarea
                     ref={textareaRef}
                     value={input}
@@ -555,7 +628,7 @@ export default function Copilot() {
                     className="flex-1 bg-transparent text-slate-200 placeholder-slate-600 px-4 py-2 resize-none outline-none text-[15px] max-h-[150px]"
                     rows={1}
                 />
-                <button className="p-2 text-slate-500 hover:text-slate-300 transition-colors"><Mic size={18} /></button>
+                <button onClick={toggleListen} className={`p-2 transition-colors ${isListening ? 'text-red-500 animate-pulse' : 'text-slate-500 hover:text-slate-300'}`}><Mic size={18} /></button>
                 <button onClick={handleSend} disabled={!input.trim() || loading} className="p-2 text-blue-500 hover:text-blue-400 disabled:opacity-50 disabled:text-slate-600 transition-colors ml-1"><Send size={18} className="translate-x-[1px] translate-y-[1px]" /></button>
             </div>
         </div>
@@ -613,7 +686,30 @@ export default function Copilot() {
         )}
       </div>
 
-
+      {/* Settings Modal */}
+      {settingsOpen && (
+        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center">
+            <div className="bg-[#18181b] border border-white/10 rounded-2xl p-6 w-[400px] shadow-2xl">
+                <div className="flex justify-between items-center mb-6">
+                    <h2 className="text-xl font-bold">Settings</h2>
+                    <button onClick={() => setSettingsOpen(false)} className="text-slate-400 hover:text-white transition-colors"><X size={18} /></button>
+                </div>
+                <div className="space-y-4">
+                    <div>
+                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">Theme</label>
+                        <select value={theme} onChange={(e) => setTheme(e.target.value)} className="w-full bg-[#09090b] border border-white/10 rounded-lg p-2 text-sm text-slate-300 outline-none">
+                            <option value="dark">Dark Theme</option>
+                            <option value="light">Light Theme (Experimental)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">Voice Input</label>
+                        <p className="text-xs text-slate-400">Ensure microphone permissions are enabled in your browser to use the speech-to-text functionality.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+      )}
 
     </div>
   );
