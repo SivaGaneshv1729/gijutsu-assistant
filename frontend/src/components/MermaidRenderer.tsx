@@ -49,11 +49,20 @@ export const MermaidRenderer: React.FC<MermaidRendererProps> = ({ chart }) => {
         if (isMounted) {
           setSvgContent(svg);
         }
-      } catch (error) {
-        console.warn('Mermaid failed to render chart:', error);
+      } catch (error: any) {
+        console.warn('Mermaid failed to render chart:', error, chart);
         
         if (isMounted) {
-          setSvgContent(`<div class="text-slate-400 p-4 border border-slate-700/50 rounded bg-slate-800/30 text-xs font-mono">Unable to render diagram.</div>`);
+          const safeChart = chart.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+          const errorMsg = error?.message || String(error);
+          setSvgContent(`
+            <div class="text-slate-400 p-4 border border-slate-700/50 rounded bg-slate-800/30 text-xs font-mono w-full overflow-auto">
+              <div class="text-red-400 mb-2 font-bold">Unable to render diagram.</div>
+              <div class="text-red-300 mb-2 whitespace-pre-wrap break-all">${errorMsg.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
+              <div class="text-xs mb-1 text-slate-500">Raw code:</div>
+              <pre class="whitespace-pre-wrap break-all">${safeChart}</pre>
+            </div>
+          `);
         }
       }
     };
