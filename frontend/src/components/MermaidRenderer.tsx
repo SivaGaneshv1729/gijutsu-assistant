@@ -38,28 +38,41 @@ export const MermaidRenderer: React.FC<MermaidRendererProps> = ({ chart }) => {
 
   useEffect(() => {
     let isMounted = true;
+    
+    // Clean up any global injected error SVGs left behind by Mermaid
+    const cleanupGlobalErrors = () => {
+      const errorElement = document.getElementById('d' + id.current);
+      if (errorElement) errorElement.remove();
+    };
 
     const renderChart = async () => {
       try {
         if (!chart) return;
         
         const cleanChart = chart.trim();
-        const { svg } = await mermaid.render(id.current, cleanChart);
+        // Passing containerRef.current ensures Dagre can measure sizes properly
+        const { svg } = await mermaid.render(id.current, cleanChart, containerRef.current || undefined);
         
         if (isMounted) {
           setSvgContent(svg);
         }
       } catch (error: any) {
-        console.warn('Mermaid failed to render chart:', error, chart);
+        cleanupGlobalErrors();
+        console.warn('Mermaid failed to render chart:', error);
         
         if (isMounted) {
           const safeChart = chart.replace(/</g, '&lt;').replace(/>/g, '&gt;');
           const errorMsg = error?.message || String(error);
+          
+          // During streaming, it will frequently fail due to incomplete syntax.
+          // Show a subtle loading state instead of a harsh red error if it's likely streaming.
           setSvgContent(`
             <div class="text-slate-400 p-4 border border-slate-700/50 rounded bg-slate-800/30 text-xs font-mono w-full overflow-auto">
-              <div class="text-red-400 mb-2 font-bold">Unable to render diagram.</div>
-              <div class="text-red-300 mb-2 whitespace-pre-wrap break-all">${errorMsg.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
-              <div class="text-xs mb-1 text-slate-500">Raw code:</div>
+              <div class="text-amber-400 mb-2 font-bold flex items-center gap-2">
+                <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                Drawing diagram...
+              </div>
+              <div class="text-slate-500 mb-1">Code currently being parsed:</div>
               <pre class="whitespace-pre-wrap break-all">${safeChart}</pre>
             </div>
           `);
@@ -67,10 +80,15 @@ export const MermaidRenderer: React.FC<MermaidRendererProps> = ({ chart }) => {
       }
     };
 
-    renderChart();
+    // Debounce rendering by 500ms to prevent rapid parsing errors while AI is streaming characters
+    const timeoutId = setTimeout(() => {
+      renderChart();
+    }, 500);
 
     return () => {
       isMounted = false;
+      clearTimeout(timeoutId);
+      cleanupGlobalErrors();
     };
   }, [chart]);
 
