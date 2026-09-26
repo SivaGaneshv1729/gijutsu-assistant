@@ -3,8 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import Layout from './components/Layout';
 import Login from './pages/Login';
 import Copilot from './pages/Copilot';
-import KnowledgeGraph from './pages/KnowledgeGraph';
-import Analytics from './pages/Analytics';
+import Landing from './pages/Landing';
 
 const queryClient = new QueryClient();
 
@@ -26,23 +25,25 @@ function App() {
       <LanguageProvider>
         <BrowserRouter>
           <Routes>
+          <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
-          <Route path="/" element={
+          <Route path="/app" element={
             <ProtectedRoute>
               <Copilot />
             </ProtectedRoute>
           } />
           <Route path="/graph" element={
             <ProtectedRoute>
-              <KnowledgeGraph />
+              <Copilot />
             </ProtectedRoute>
           } />
           <Route path="/analytics" element={
             <ProtectedRoute>
-              <Analytics />
+              <Copilot />
             </ProtectedRoute>
           } />
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="/admin" element={<ProtectedRoute><Copilot /></ProtectedRoute>} />
+          <Route path="*" element={<Navigate to="/app" replace />} />
         </Routes>
       </BrowserRouter>
       </LanguageProvider>

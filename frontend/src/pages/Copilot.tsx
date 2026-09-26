@@ -1,9 +1,12 @@
 import { useState, useRef, useEffect } from 'react';
 import { MermaidRenderer } from '../components/MermaidRenderer';
-import { Settings, Check, FileText, Send, Edit, ThumbsDown, Copy, RotateCcw, MessageSquare, Zap, Paperclip, User, Sidebar, X, Mic, Search, Trash2, ThumbsUp, GitBranch, BarChart2, BookOpen, Filter, Cpu, Loader2 } from 'lucide-react';
+import { Settings, Check, UploadCloud, FileText, Send, Edit, ThumbsDown, Copy, RotateCcw, MessageSquare, Zap, Paperclip, User, Sidebar, X, Mic, Search, Trash2, ThumbsUp, GitBranch, BarChart2, BookOpen, Filter, Cpu, Loader2 } from 'lucide-react';
 import { listDocuments } from '../services/api';
 import ReactMarkdown from 'react-markdown';
-import { useNavigate } from 'react-router-dom';
+import KnowledgeGraph from './KnowledgeGraph';
+import Analytics from './Analytics';
+import AdminPanel from './AdminPanel';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useLanguage } from '../contexts/LanguageContext';
 import type { Message, Citation, ChatSession } from '../types';
 import { listSessions, createSession, deleteSession as apiDeleteSession, getSessionMessages, sendChatMessage, getSessionThoughts } from '../services/api';
@@ -48,6 +51,10 @@ function TypewriterText({ text, onComplete }: { text: string; onComplete?: () =>
 
 export default function Copilot() {
   const { language, setLanguage, t } = useLanguage();
+  const location = useLocation();
+  const currentView = location.pathname.includes('/graph') ? 'graph' :
+                      location.pathname.includes('/analytics') ? 'analytics' :
+                      location.pathname.includes('/admin') ? 'admin' : 'chat';
   const [messages, setMessages] = useState<Message[]>([{
     id: '1',
     role: 'assistant',
@@ -511,9 +518,10 @@ export default function Copilot() {
         <div className="px-3 mb-4">
           <div className="text-[11px] uppercase tracking-wider text-slate-600 font-semibold px-3 mb-2 shrink-0">{t("sidebar.menu")}</div>
           <div className="space-y-0.5">
-             <SidebarItem icon={<Settings size={16}/>} label={t("sidebar.settings")} onClick={() => setSettingsOpen(true)} />
-             <SidebarItem icon={<GitBranch size={16}/>} label="Knowledge Graph" onClick={() => navigate('/graph')} />
-             <SidebarItem icon={<BarChart2 size={16}/>} label="Analytics" onClick={() => navigate('/analytics')} />
+             <SidebarItem icon={<UploadCloud size={16}/>} label="Admin Panel" onClick={() => navigate('/admin')} active={currentView === 'admin'} />
+               <SidebarItem icon={<Settings size={16}/>} label={t("sidebar.settings")} onClick={() => setSettingsOpen(true)} />
+             <SidebarItem icon={<GitBranch size={16}/>} label="Knowledge Graph" onClick={() => navigate('/graph')} active={currentView === 'graph'} />
+             <SidebarItem icon={<BarChart2 size={16}/>} label="Analytics" onClick={() => navigate('/analytics')} active={currentView === 'analytics'} />
           </div>
         </div>
 
@@ -580,7 +588,9 @@ export default function Copilot() {
         </div>
       </div>
 
-      {/* MAIN CHAT AREA */}
+      {currentView === 'chat' && (
+        <>
+{/* MAIN CHAT AREA */}
       <div className="flex-1 flex flex-col h-full relative bg-[#0f141e] bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#172033] via-[#0f141e] to-[#0a0f18] shadow-[-10px_0_40px_rgba(0,0,0,0.5)] z-10 overflow-hidden">
         
         {/* Top Header */}
@@ -709,7 +719,30 @@ export default function Copilot() {
         </div>
       </div>
 
+      
+        </>
+      )}
+      
+      {currentView === 'graph' && (
+        <div className="flex-1 w-full h-full relative overflow-hidden bg-[#09090b]">
+          <KnowledgeGraph />
+        </div>
+      )}
+
+      {currentView === 'analytics' && (
+        <div className="flex-1 w-full h-full overflow-y-auto no-scrollbar relative">
+          <Analytics />
+        </div>
+      )}
+
+      {currentView === 'admin' && (
+        <div className="flex-1 w-full h-full overflow-y-auto no-scrollbar relative">
+          <AdminPanel />
+        </div>
+      )}
+
       {/* RIGHT SIDEBAR (PDF PANEL) */}
+      {currentView === 'chat' && (
       <div 
         style={{ width: activeCitation ? pdfPanelWidth : 0, transition: isResizingPdf ? 'none' : 'width 0.3s ease-in-out' }}
         className={`${activeCitation ? 'border-l border-white/5 shadow-[-20px_0_50px_rgba(0,0,0,0.5)]' : 'border-l-0'} 
@@ -761,6 +794,7 @@ export default function Copilot() {
         )}
       </div>
 
+      )}
       {/* Settings Modal */}
       {settingsOpen && (
         <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center">
