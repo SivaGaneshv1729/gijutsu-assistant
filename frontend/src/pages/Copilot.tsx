@@ -503,28 +503,33 @@ export default function Copilot() {
 
         {/* Focused Document Mode */}
         <div className="px-3 mb-4">
-          <div className="text-[11px] uppercase tracking-wider text-slate-600 font-semibold px-3 mb-2 shrink-0 flex items-center gap-2"><BookOpen size={10}/> Focused Doc</div>
+          <div className="text-[11px] uppercase tracking-wider text-slate-600 font-semibold px-3 mb-2 shrink-0 flex items-center gap-2"><BookOpen size={10}/> Focused Docs</div>
           <div className="space-y-0.5 max-h-40 overflow-y-auto no-scrollbar">
             <div
-              onClick={() => setFocusedDocId(null)}
+              onClick={() => setFocusedDocIds([])}
               className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs cursor-pointer transition-colors ${
-                focusedDocId === null ? 'bg-blue-600/20 text-blue-400 border border-blue-500/20' : 'text-slate-500 hover:text-white hover:bg-white/5'
+                focusedDocIds.length === 0 ? "bg-blue-600/20 text-blue-400 border border-blue-500/20" : "text-slate-500 hover:text-white hover:bg-white/5"
               }`}
             >
               <Filter size={10}/> All Documents
             </div>
-            {documents.map((doc: any) => (
+            {documents.map((doc: any) => {
+              const isSelected = focusedDocIds.includes(doc.id);
+              return (
               <div
                 key={doc.id}
-                onClick={() => setFocusedDocId(doc.id)}
+                onClick={() => setFocusedDocIds(prev => isSelected ? prev.filter(id => id !== doc.id) : [...prev, doc.id])}
                 className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs cursor-pointer transition-colors ${
-                  focusedDocId === doc.id ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/20' : 'text-slate-500 hover:text-white hover:bg-white/5'
+                  isSelected ? "bg-indigo-600/20 text-indigo-400 border border-indigo-500/20" : "text-slate-500 hover:text-white hover:bg-white/5"
                 }`}
               >
+                <div className={`w-3 h-3 rounded-sm flex items-center justify-center shrink-0 border ${isSelected ? "bg-indigo-500 border-indigo-500 text-white" : "border-slate-500"}`}>
+                  {isSelected ? <Check size={8} /> : null}
+                </div>
                 <FileText size={10} className="shrink-0"/>
                 <span className="truncate">{doc.name || doc.filename || doc.id}</span>
               </div>
-            ))}
+            )})}
           </div>
         </div>
 
