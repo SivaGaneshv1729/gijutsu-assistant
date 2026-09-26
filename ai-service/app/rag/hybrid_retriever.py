@@ -23,7 +23,7 @@ class HybridRetriever:
         """Return the list of access levels this role is permitted to view."""
         return self.ACCESS_HIERARCHY.get(access_level.upper(), ["PUBLIC"])
 
-    def _dense_search(self, query_embedding: List[float], access_level: str, top_k: int = 10) -> List[Dict]:
+    def _dense_search(self, query_embedding: List[float], access_level: str, top_k: int = 10, document_ids: List[str] = None) -> List[Dict]:
         """
         RBAC-before-retrieval dense search against pgvector (see ADR-005).
 
@@ -69,7 +69,7 @@ class HybridRetriever:
             for r in rows
         ]
 
-    def _keyword_search(self, query: str, access_level: str, top_k: int = 10) -> List[Dict]:
+    def _keyword_search(self, query: str, access_level: str, top_k: int = 10, document_ids: List[str] = None) -> List[Dict]:
         """
         Best-effort keyword search over OpenSearch (reserved / optionally deployed).
 
@@ -98,15 +98,15 @@ class HybridRetriever:
         except Exception:
             return []
 
-    def retrieve(self, query: str, access_level: str = "OPERATOR", top_k: int = 5) -> List[Dict]:
+    def retrieve(self, query: str, access_level: str = "OPERATOR", top_k: int = 5, document_ids: List[str] = None) -> List[Dict]:
         # 1. Generate query embedding
         query_embedding = embedding_generator.generate(query)
 
         # 2. Dense search (RBAC-filtered)
-        dense_results = self._dense_search(query_embedding, access_level, top_k=top_k * 2)
+        dense_results = self._dense_search(query_embedding, access_level, top_k=top_k * 2, document_ids=document_ids)
 
         # 3. Keyword search (best-effort)
-        keyword_results = self._keyword_search(query, access_level, top_k=top_k * 2)
+        keyword_results = self._keyword_search(query, access_level, top_k=top_k * 2, document_ids=document_ids)
 
         # 4. Reciprocal Rank Fusion (RRF)
         # RRF Score = 1 / (k + rank)

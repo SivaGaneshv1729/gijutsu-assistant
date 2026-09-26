@@ -21,6 +21,7 @@ class QueryRequest(BaseModel):
     query: str = Field(min_length=1, max_length=MAX_QUERY_LENGTH)
     access_level: Optional[str] = "ENGINEER"
     language: str = "en"
+    document_ids: Optional[List[str]] = None
 
 
 class Citation(BaseModel):
@@ -61,7 +62,8 @@ def query_rag(request: QueryRequest, db: Session = Depends(get_db)):
         result = orchestrator.query(
             user_question=request.query,
             access_level=request.access_level,
-            language=request.language
+            language=request.language,
+            document_ids=request.document_ids
         )
         return result
     except Exception as e:

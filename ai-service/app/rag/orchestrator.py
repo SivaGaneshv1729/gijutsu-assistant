@@ -51,13 +51,13 @@ class RAGOrchestrator:
                     subtasks.append(parts[1].strip())
         return subtasks if subtasks else [user_question]
 
-    def _execute_subtask(self, subtask: str, access_level: str) -> Dict[str, Any]:
+    def _execute_subtask(self, subtask: str, access_level: str, document_ids: List[str] = None) -> Dict[str, Any]:
         """Executes a single sub-task: RAG retrieval + external search."""
-        chunks = self.retriever.retrieve(subtask, access_level=access_level, top_k=4)
-        external = get_external_context(subtask, max_results=1)
+        chunks = self.retriever.retrieve(subtask, access_level=access_level, top_k=4, document_ids=document_ids)
+        external = get_external_context(subtask, max_results=1) if not document_ids else {'text': '', 'images': []}
         return {"subtask": subtask, "chunks": chunks, "external": external}
 
-    def query(self, user_question: str, access_level: str = "OPERATOR", language: str = "en") -> Dict[str, Any]:
+    def query(self, user_question: str, access_level: str = "OPERATOR", language: str = "en", document_ids: List[str] = None) -> Dict[str, Any]:
         """
         Orchestrates the entire RAG pipeline for a given user query.
         For complex queries, automatically enters Agentic multi-step mode.
@@ -96,7 +96,7 @@ class RAGOrchestrator:
 
             agentic_context_parts = []
             for i, subtask in enumerate(subtasks, 1):
-                result = self._execute_subtask(subtask, access_level)
+                result = self._execute_subtask(subtask, access_level, document_ids)
                 agentic_context_parts.append(f"### Research Step {i}: {subtask}\n")
                 if result["chunks"]:
                     all_chunks.extend(result["chunks"])
@@ -114,11 +114,11 @@ class RAGOrchestrator:
             )
         else:
             # Standard single-step RAG
-            all_chunks = self.retriever.retrieve(user_question, access_level=access_level, top_k=8)
+            all_chunks = self.retriever.retrieve(user_question, access_level=access_level, top_k=8, document_ids=document_ids)
             if all_chunks:
                 context_block = build_context_block(all_chunks)
 
-            external_data = get_external_context(user_question, max_results=2)
+            external_data = get_external_context(user_question, max_results=2) if not document_ids else {'text': '', 'images': []}
             if external_data["text"]:
                 context_block += f"\n\n--- EXTERNAL WEB KNOWLEDGE ---\n{external_data['text']}\n"
             all_external_images = external_data.get("images", [])

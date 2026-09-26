@@ -39,6 +39,8 @@ public class RagService {
         Map<String, Object> requestBody = new HashMap<>();
         requestBody.put("query", ragRequest.getQuery());
         requestBody.put("access_level", accessLevel);
+        requestBody.put("language", ragRequest.getLanguage());
+        requestBody.put("document_ids", ragRequest.getDocumentIds());
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);

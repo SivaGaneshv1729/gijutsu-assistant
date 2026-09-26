@@ -172,7 +172,7 @@ export default function Copilot() {
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<Record<string, 'up' | 'down' | null>>({});
-  const [focusedDocId, setFocusedDocId] = useState<string | null>(null);
+  const [focusedDocIds, setFocusedDocIds] = useState<string[]>([]);
   const [documents, setDocuments] = useState<any[]>([]);
 
   const handleCopy = (id: string, text: string) => {
@@ -260,7 +260,7 @@ export default function Copilot() {
         setSessions(prev => [newSession, ...prev]);
       }
 
-      const msg = await sendChatMessage(sessionId, query, language);
+      const msg = await sendChatMessage(sessionId, query, language, focusedDocIds.length > 0 ? focusedDocIds : undefined);
       const aiMsg: Message = {
         id: msg.id,
         role: 'assistant',
