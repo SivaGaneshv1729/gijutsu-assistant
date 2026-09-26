@@ -21,6 +21,7 @@ class QueryRequest(BaseModel):
     query: str = Field(min_length=1, max_length=MAX_QUERY_LENGTH)
     access_level: Optional[str] = "ENGINEER"
     language: str = "en"
+    session_id: str
     document_ids: Optional[List[str]] = None
 
 
@@ -63,6 +64,7 @@ def query_rag(request: QueryRequest, db: Session = Depends(get_db)):
             user_question=request.query,
             access_level=request.access_level,
             language=request.language,
+            session_id=request.session_id,
             document_ids=request.document_ids
         )
         return result
@@ -191,5 +193,17 @@ def ingest_document(request: IngestRequest, db: Session = Depends(get_db)):
         raise  # Re-raise HTTP exceptions (e.g., 404) as-is
     except Exception as e:
         print("Error ingesting document:")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+from app.graph.neo4j_store import get_knowledge_graph
+
+@router.get("/graph")
+async def get_graph():
+    try:
+        kg = await get_knowledge_graph()
+        return await kg.export_graph()
+    except Exception as e:
+        import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))

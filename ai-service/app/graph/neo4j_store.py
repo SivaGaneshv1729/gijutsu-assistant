@@ -89,6 +89,50 @@ class KnowledgeGraph:
             result = await session.run(query, entity_name=entity_name)
             return [dict(record) async for record in result]
 
+
+    async def export_graph(self):
+        await self.connect()
+        query = """
+        MATCH (n)
+        OPTIONAL MATCH (n)-[r]->(m)
+        RETURN n, r, m LIMIT 500
+        """
+        nodes = {}
+        links = []
+        async with self._driver.session() as session:
+            result = await session.run(query)
+            async for record in result:
+                n = record["n"]
+                if n and n.element_id not in nodes:
+                    node_type = list(n.labels)[0].lower() if n.labels else 'unknown'
+                    node_label = dict(n).get('name', dict(n).get('id', str(n.element_id)))
+                    if len(node_label) > 30: node_label = node_label[:30] + '...'
+                    nodes[n.element_id] = {
+                        "id": n.element_id,
+                        "type": node_type,
+                        "label": node_label,
+                        **dict(n)
+                    }
+                m = record["m"]
+                if m and m.element_id not in nodes:
+                    m_type = list(m.labels)[0].lower() if m.labels else 'unknown'
+                    m_label = dict(m).get('name', dict(m).get('id', str(m.element_id)))
+                    if len(m_label) > 30: m_label = m_label[:30] + '...'
+                    nodes[m.element_id] = {
+                        "id": m.element_id,
+                        "type": m_type,
+                        "label": m_label,
+                        **dict(m)
+                    }
+                r = record["r"]
+                if r:
+                    links.append({
+                        "source": r.nodes[0].element_id,
+                        "target": r.nodes[1].element_id,
+                        "label": r.type
+                    })
+        return {"nodes": list(nodes.values()), "links": links}
+
     async def get_graph_stats(self) -> Dict[str, int]:
         """Get node and relationship counts."""
         await self.connect()

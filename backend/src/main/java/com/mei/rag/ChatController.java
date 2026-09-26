@@ -6,6 +6,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.util.List;
 import java.util.Map;
+import org.springframework.jdbc.core.JdbcTemplate;
+import java.util.Map;
+import java.util.List;
 import java.util.Optional;
 
 @RestController
@@ -16,12 +19,14 @@ public class ChatController {
     private final ChatMessageRepository messageRepository;
     private final RagService ragService;
     private final ObjectMapper objectMapper;
+    private final JdbcTemplate jdbcTemplate;
 
-    public ChatController(ChatSessionRepository sessionRepository, ChatMessageRepository messageRepository, RagService ragService, ObjectMapper objectMapper) {
+    public ChatController(ChatSessionRepository sessionRepository, ChatMessageRepository messageRepository, RagService ragService, ObjectMapper objectMapper, JdbcTemplate jdbcTemplate) {
         this.sessionRepository = sessionRepository;
         this.messageRepository = messageRepository;
         this.ragService = ragService;
         this.objectMapper = objectMapper;
+        this.jdbcTemplate = jdbcTemplate;
     }
 
     @PostMapping("/sessions")
@@ -59,6 +64,13 @@ public class ChatController {
         return ResponseEntity.ok(messages);
     }
 
+    @GetMapping("/sessions/{id}/thoughts")
+    public ResponseEntity<List<Map<String, Object>>> getThoughts(@PathVariable String id) {
+        String sql = "SELECT thought, created_at FROM chat_thoughts WHERE session_id = ? ORDER BY created_at ASC";
+        List<Map<String, Object>> thoughts = jdbcTemplate.queryForList(sql, id);
+        return ResponseEntity.ok(thoughts);
+    }
+
     @PostMapping("/sessions/{id}/message")
     public ResponseEntity<ChatMessage> sendMessage(@PathVariable String id, @RequestBody RagRequest ragRequest) {
         Optional<ChatSession> sessionOpt = sessionRepository.findById(id);
@@ -89,6 +101,8 @@ public class ChatController {
             String langInstruction = ragRequest.getLanguage().equals("ja") ? "Japanese" : "English";
             ragRequest.setQuery(ragRequest.getQuery() + "\n\n[SYSTEM INSTRUCTION: You MUST translate and generate your entire response to this query in " + langInstruction + ", matching the persona rules.]");
         }
+
+        ragRequest.setSessionId(id);
 
         // 2. Query AI Service
         RagResponse ragResponse = ragService.queryAiService(ragRequest);

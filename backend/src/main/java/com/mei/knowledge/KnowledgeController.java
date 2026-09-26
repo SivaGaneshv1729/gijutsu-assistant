@@ -12,14 +12,39 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import org.springframework.web.client.RestTemplate;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+
 @RestController
 @RequestMapping("/api/knowledge")
 public class KnowledgeController {
 
     private final KnowledgeService knowledgeService;
+    private final RestTemplate restTemplate;
+    private final String aiServiceUrl;
 
-    public KnowledgeController(KnowledgeService knowledgeService) {
+    public KnowledgeController(KnowledgeService knowledgeService, RestTemplate restTemplate, @Value("${ai.service.url}") String aiServiceUrl) {
         this.knowledgeService = knowledgeService;
+        this.restTemplate = restTemplate;
+        this.aiServiceUrl = aiServiceUrl;
+    }
+    
+    @GetMapping("/graph")
+    public ResponseEntity<Map> getKnowledgeGraph() {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        HttpEntity<String> entity = new HttpEntity<>(headers);
+        ResponseEntity<Map> response = restTemplate.exchange(
+            aiServiceUrl + "/api/rag/graph",
+            HttpMethod.GET,
+            entity,
+            Map.class
+        );
+        return ResponseEntity.ok(response.getBody());
     }
 
     @GetMapping("/documents")

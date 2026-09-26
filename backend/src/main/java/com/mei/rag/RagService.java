@@ -41,6 +41,7 @@ public class RagService {
         requestBody.put("access_level", accessLevel);
         requestBody.put("language", ragRequest.getLanguage());
         requestBody.put("document_ids", ragRequest.getDocumentIds());
+        requestBody.put("session_id", ragRequest.getSessionId());
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);

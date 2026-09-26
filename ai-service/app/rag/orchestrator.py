@@ -1,3 +1,6 @@
+from sqlalchemy import text
+import time
+
 from typing import Dict, Any, List
 from sqlalchemy.orm import Session
 from app.rag.hybrid_retriever import HybridRetriever
@@ -57,7 +60,15 @@ class RAGOrchestrator:
         external = get_external_context(subtask, max_results=1) if not document_ids else {'text': '', 'images': []}
         return {"subtask": subtask, "chunks": chunks, "external": external}
 
-    def query(self, user_question: str, access_level: str = "OPERATOR", language: str = "en", document_ids: List[str] = None) -> Dict[str, Any]:
+    def _log_thought(self, session_id: str, thought: str):
+        if not session_id: return
+        try:
+            self.db.execute(text("INSERT INTO chat_thoughts (session_id, thought) VALUES (:sid, :t)"), {"sid": session_id, "t": thought})
+            self.db.commit()
+        except Exception as e:
+            print("Failed to log thought", e)
+
+    def query(self, user_question: str, access_level: str = "OPERATOR", language: str = "en", document_ids: List[str] = None, session_id: str = None) -> Dict[str, Any]:
         """
         Orchestrates the entire RAG pipeline for a given user query.
         For complex queries, automatically enters Agentic multi-step mode.
@@ -68,6 +79,7 @@ class RAGOrchestrator:
             access_level = "OPERATOR"
 
         # 1. Short-circuit for simple greetings
+        self._log_thought(session_id, "Analyzing intent and prompt context...")
         greetings = {"hi", "hello", "hey", "good morning", "good afternoon", "hi there",
                      "hello there", "holla", "hola", "greetings"}
         if user_question.strip().lower() in greetings:
@@ -91,11 +103,13 @@ class RAGOrchestrator:
 
         if is_agentic:
             print(f"[AGENT MODE] Decomposing query: {user_question}")
+            self._log_thought(session_id, "Decomposing complex query into subtasks...")
             subtasks = self._plan_subtasks(user_question)
             print(f"[AGENT MODE] Sub-tasks: {subtasks}")
 
             agentic_context_parts = []
             for i, subtask in enumerate(subtasks, 1):
+                self._log_thought(session_id, f"Executing research subtask: {subtask}")
                 result = self._execute_subtask(subtask, access_level, document_ids)
                 agentic_context_parts.append(f"### Research Step {i}: {subtask}\n")
                 if result["chunks"]:

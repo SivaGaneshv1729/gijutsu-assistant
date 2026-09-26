@@ -1,8 +1,8 @@
 import type { DocumentSummary, ChatSession, ChatMessage } from '../types';
 
-const API_BASE = '';
+export const API_BASE = '';
 
-function getToken(): string {
+export function getToken(): string {
   return localStorage.getItem('token') || '';
 }
 
@@ -112,4 +112,11 @@ export async function sendChatMessage(sessionId: string, query: string, language
     body: JSON.stringify({ query, language, documentIds }),
   });
   return handleResponse<ChatMessage>(res);
+}
+
+export async function getSessionThoughts(sessionId: string): Promise<any[]> {
+  const res = await fetch(`${API_BASE}/api/chat/sessions/${sessionId}/thoughts`, {
+    headers: { Authorization: `Bearer ${getToken()}` },
+  });
+  return handleResponse<any[]>(res);
 }

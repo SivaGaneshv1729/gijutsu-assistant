@@ -1,12 +1,12 @@
 import { useState, useRef, useEffect } from 'react';
 import { MermaidRenderer } from '../components/MermaidRenderer';
-import { Settings, Check, FileText, Send, Edit, ThumbsDown, Copy, RotateCcw, MessageSquare, Zap, Paperclip, User, Sidebar, X, Mic, Search, Trash2, ThumbsUp, GitBranch, BarChart2, BookOpen, Filter } from 'lucide-react';
+import { Settings, Check, FileText, Send, Edit, ThumbsDown, Copy, RotateCcw, MessageSquare, Zap, Paperclip, User, Sidebar, X, Mic, Search, Trash2, ThumbsUp, GitBranch, BarChart2, BookOpen, Filter, Cpu, Loader2 } from 'lucide-react';
 import { listDocuments } from '../services/api';
 import ReactMarkdown from 'react-markdown';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../contexts/LanguageContext';
 import type { Message, Citation, ChatSession } from '../types';
-import { listSessions, createSession, deleteSession as apiDeleteSession, getSessionMessages, sendChatMessage } from '../services/api';
+import { listSessions, createSession, deleteSession as apiDeleteSession, getSessionMessages, sendChatMessage, getSessionThoughts } from '../services/api';
 
 
 function TypewriterText({ text, onComplete }: { text: string; onComplete?: () => void }) {
@@ -174,6 +174,7 @@ export default function Copilot() {
   const [feedback, setFeedback] = useState<Record<string, 'up' | 'down' | null>>({});
   const [focusedDocIds, setFocusedDocIds] = useState<string[]>([]);
   const [documents, setDocuments] = useState<any[]>([]);
+  const [thoughts, setThoughts] = useState<any[]>([]);
 
   const handleCopy = (id: string, text: string) => {
     navigator.clipboard.writeText(text);
@@ -199,6 +200,21 @@ export default function Copilot() {
     listSessions().then(setSessions).catch(console.error);
     listDocuments().then(setDocuments).catch(console.error);
   }, []);
+
+  
+  useEffect(() => {
+    let interval: any;
+    if (loading && currentSessionId) {
+      interval = setInterval(() => {
+        getSessionThoughts(currentSessionId)
+        .then(data => setThoughts(data))
+        .catch(() => {});
+      }, 1000);
+    } else {
+      setThoughts([]);
+    }
+    return () => clearInterval(interval);
+  }, [loading, currentSessionId]);
 
   useEffect(() => {
     if (currentSessionId) {
@@ -638,7 +654,29 @@ export default function Copilot() {
                     )}
                 </div>
             ))}
-            {loading && (
+            
+            {loading && thoughts.length > 0 && (
+              <div className="flex mb-6 w-full animate-in fade-in slide-in-from-bottom-2 duration-300">
+                <div className="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center shrink-0 mr-4">
+                  <Cpu size={16} className="text-indigo-400 animate-pulse" />
+                </div>
+                <div className="bg-[#1e1e24] border border-slate-800 rounded-2xl rounded-tl-sm px-5 py-4 w-full shadow-sm">
+                  <div className="text-xs font-semibold text-indigo-400 mb-2 flex items-center gap-2 uppercase tracking-wider">
+                    <Loader2 size={12} className="animate-spin" /> Agentic Analysis
+                  </div>
+                  <div className="space-y-1.5 font-mono text-[11px] text-slate-400">
+                    {thoughts.map((t: any, i: number) => (
+                      <div key={i} className="flex gap-2">
+                        <span className="text-slate-600 shrink-0">[{new Date(t.created_at).toLocaleTimeString()}]</span>
+                        <span className={i === thoughts.length - 1 ? 'text-indigo-300' : ''}>{t.thought}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {loading && thoughts.length === 0 && (
                 <div className="w-full flex justify-start">
                     <div className="flex items-center gap-1.5 h-8">
                         <div className="w-1.5 h-1.5 rounded-full bg-slate-500 animate-pulse"></div>

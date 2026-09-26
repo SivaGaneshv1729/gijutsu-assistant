@@ -4,6 +4,7 @@ import java.util.List;
 
 public class RagRequest {
     private String query;
+    private String sessionId;
     private String language;
     private List<String> documentIds;
 
@@ -11,6 +12,14 @@ public class RagRequest {
 
     public RagRequest(String query) {
         this.query = query;
+    }
+
+    public String getSessionId() {
+        return sessionId;
+    }
+
+    public void setSessionId(String sessionId) {
+        this.sessionId = sessionId;
     }
 
     public String getQuery() {
