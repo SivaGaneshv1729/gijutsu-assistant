@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { MermaidRenderer } from '../components/MermaidRenderer';
+import { ModelViewer } from '../components/ModelViewer';
+
 import { Settings, Check, UploadCloud, FileText, Send, Edit, ThumbsDown, Copy, RotateCcw, MessageSquare, Zap, Paperclip, User, Sidebar, X, Mic, Search, Trash2, ThumbsUp, GitBranch, BarChart2, BookOpen, Filter, Cpu, Loader2 } from 'lucide-react';
 import { listDocuments } from '../services/api';
 import ReactMarkdown from 'react-markdown';
@@ -284,6 +286,10 @@ export default function Copilot() {
       }
 
       const msg = await sendChatMessage(sessionId, query, language, focusedDocIds.length > 0 ? focusedDocIds : undefined);
+        const qLower = query.toLowerCase();
+        if (qLower.includes('motor') || qLower.includes('pump')) {
+            msg.content = "Here is the 3D interactive prototype you requested:\n\n```3dmodel\n" + (qLower.includes('motor') ? 'motor' : 'pump') + "\n```\n\n" + msg.content;
+        }
       const aiMsg: Message = {
         id: msg.id,
         role: 'assistant',
@@ -451,9 +457,14 @@ export default function Copilot() {
           ),
           code: ({ node, inline, className, children, ...props }: any) => {
             const match = /language-(\w+)/.exec(className || '');
-            if (!inline && match && match[1] === 'mermaid') {
-              return <MermaidRenderer chart={String(children).replace(/\n$/, '')} />;
-            }
+            if (!inline && match) {
+                if (match[1] === 'mermaid') {
+                  return <MermaidRenderer chart={String(children).replace(/\n$/, '')} />;
+                }
+                if (match[1] === '3dmodel') {
+                  return <ModelViewer type={String(children).replace(/\n$/, '')} />;
+                }
+              }
             return (
               <code className={className} {...props}>
                 {children}

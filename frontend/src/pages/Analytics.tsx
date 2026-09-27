@@ -1,60 +1,10 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
+import { ModelViewer } from '../components/ModelViewer';
 import {
-  AreaChart, Area, BarChart, Bar,
+  AreaChart, Area,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
-import { BarChart2, Activity, Cpu, AlertTriangle, Zap, Server, ShieldCheck, Database, Terminal, Radio } from 'lucide-react';
-
-// Live Telemetry Generator
-const generateTelemetry = () => ({
-  id: Math.random().toString(36).substr(2, 9),
-  timestamp: new Date().toLocaleTimeString(),
-  sensor: ['Thermocouple_A1', 'Vibration_M4', 'Pressure_V2', 'Flow_Main'][Math.floor(Math.random() * 4)],
-  value: (Math.random() * 100).toFixed(2),
-  status: Math.random() > 0.9 ? 'warning' : 'ok'
-});
-
-const TelemetryFeed = () => {
-  const [logs, setLogs] = useState<any[]>([]);
-  
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setLogs(prev => [generateTelemetry(), ...prev].slice(0, 50));
-    }, 1500);
-    return () => clearInterval(interval);
-  }, []);
-
-  return (
-    <div className="h-full bg-[#050505] rounded-2xl border border-white/5 relative overflow-hidden flex flex-col shadow-inner">
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-900/10 to-transparent"></div>
-      <div className="p-4 border-b border-white/5 flex items-center justify-between z-10 bg-[#0a0a0a]/80 backdrop-blur-md">
-        <div className="flex items-center gap-2">
-          <Terminal size={14} className="text-blue-400" />
-          <h3 className="text-xs font-bold text-slate-300 uppercase tracking-widest">Live Telemetry Stream</h3>
-        </div>
-        <div className="flex items-center gap-1.5 px-2 py-1 bg-green-500/10 rounded-full border border-green-500/20">
-          <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div>
-          <span className="text-[9px] font-bold text-green-400 uppercase tracking-wider">Syncing</span>
-        </div>
-      </div>
-      <div className="flex-1 overflow-hidden relative p-4 z-10 font-mono text-[11px]">
-        <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-transparent to-transparent z-20 pointer-events-none"></div>
-        {logs.map((log, i) => (
-          <div key={log.id} className={`flex items-center justify-between mb-2 pb-2 border-b border-white/5 animate-in fade-in slide-in-from-top-2 ${log.status === 'warning' ? 'text-orange-400' : 'text-slate-400'}`}>
-             <div className="flex items-center gap-3">
-               <span className="text-slate-600">[{log.timestamp}]</span>
-               <span className="font-semibold">{log.sensor}</span>
-             </div>
-             <div className="flex items-center gap-2">
-               <span>{log.value}</span>
-               {log.status === 'warning' && <AlertTriangle size={12} className="animate-pulse" />}
-             </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-};
+import { Activity, Cpu, Zap, Server, ShieldCheck, Database, Radio, TrendingUp } from 'lucide-react';
 
 const NodeStatus = ({ name, load, health }: { name: string, load: number, health: 'good' | 'warn' | 'critical' }) => {
   const color = health === 'good' ? 'bg-emerald-500' : health === 'warn' ? 'bg-orange-500' : 'bg-red-500';
@@ -135,7 +85,7 @@ export default function Analytics() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* Left Column: Stats & Nodes */}
         <div className="lg:col-span-1 flex flex-col gap-6">
@@ -221,12 +171,20 @@ export default function Analytics() {
                 <div className="text-xs text-blue-400 mt-1">~42 QPS avg</div>
              </div>
           </div>
+          
+          <div className="bg-[#0a0a0a] border border-white/5 rounded-2xl p-6 relative overflow-hidden shadow-[0_0_30px_rgba(0,0,0,0.5)]">
+            <h3 className="text-sm font-bold text-white mb-4">Live 3D Hardware Telemetry</h3>
+            <div className="w-full h-[300px] rounded-xl overflow-hidden border border-white/5 bg-[#050505] relative">
+               <div className="absolute top-4 left-4 z-10 px-3 py-1 bg-blue-500/10 border border-blue-500/20 rounded-full flex items-center gap-2">
+                 <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse"></div>
+                 <span className="text-[9px] font-bold text-blue-400 uppercase tracking-widest">Motor A1 Sync</span>
+               </div>
+               <ModelViewer type="motor" />
+            </div>
+          </div>
         </div>
 
-        {/* Right Column: Telemetry */}
-        <div className="lg:col-span-1 h-full">
-           <TelemetryFeed />
-        </div>
+
 
       </div>
     </div>
