@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { GitBranch, RefreshCw, Search, X, Sliders, Info, Network, LayoutTemplate, Box, Maximize2 } from 'lucide-react';
 import { API_BASE, getToken } from '../services/api';
-import ForceGraph2D from 'react-force-graph-2d';
+import ForceGraph3D from 'react-force-graph-3d';
 
 const TYPE_COLORS: Record<string, string> = {
   hub: '#6366f1',
@@ -19,7 +19,7 @@ export default function KnowledgeGraph() {
   const [selectedNode, setSelectedNode] = useState<any | null>(null);
   const [highlightNodes, setHighlightNodes] = useState(new Set());
   const [highlightLinks, setHighlightLinks] = useState(new Set());
-  const [hoverNode, setHoverNode] = useState<any | null>(null);
+  
   
   const [linkDistance, setLinkDistance] = useState(100);
   const [nodeRepulsion, setNodeRepulsion] = useState(-300);
@@ -105,7 +105,7 @@ export default function KnowledgeGraph() {
       });
     }
     
-    setHoverNode(node || null);
+    
     updateHighlight();
   }, [graphData, selectedNode]);
 
@@ -127,42 +127,7 @@ export default function KnowledgeGraph() {
     updateHighlight();
   }, [searchQuery, graphData]);
 
-  const paintNode = useCallback((node: any, ctx: CanvasRenderingContext2D, globalScale: number) => {
-    const isSelected = selectedNode && node.id === selectedNode.id;
-    const isHighlighted = highlightNodes.has(node) || highlightNodes.has(node.id);
-    const isSearchMatch = searchQuery && (node.label || node.id).toLowerCase().includes(searchQuery.toLowerCase());
-    const isDimmed = (selectedNode || hoverNode || searchQuery) && !isHighlighted && !isSearchMatch;
-
-    const baseColor = TYPE_COLORS[node.type] || '#64748b';
-    const color = isDimmed ? baseColor + '40' : baseColor;
-    const radius = node.id === 'hub' ? 14 : node.type === 'topic' ? 8 : 4;
-    
-    if (isSelected || isSearchMatch) {
-        ctx.beginPath();
-        ctx.arc(node.x, node.y, radius * 2.5, 0, 2 * Math.PI, false);
-        ctx.fillStyle = baseColor + '50';
-        ctx.fill();
-    }
-
-    ctx.beginPath();
-    ctx.arc(node.x, node.y, radius, 0, 2 * Math.PI, false);
-    ctx.fillStyle = color;
-    ctx.fill();
-
-    ctx.lineWidth = isSelected ? 2 : 1;
-    ctx.strokeStyle = isDimmed ? 'rgba(255,255,255,0.05)' : (isSelected ? '#fff' : 'rgba(255,255,255,0.2)');
-    ctx.stroke();
-
-    if (!isDimmed && globalScale > 1.5) {
-      const label = node.label.length > 25 ? node.label.substring(0, 23) + '...' : node.label;
-      const fontSize = 12/globalScale;
-      ctx.font = `${fontSize}px Inter`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillStyle = '#e2e8f0';
-      ctx.fillText(label, node.x, node.y + radius + 4 + fontSize);
-    }
-  }, [selectedNode, hoverNode, highlightNodes, searchQuery]);
+  
 
   return (
     <div className="flex flex-col h-full bg-[#09090b] text-slate-200">
@@ -253,12 +218,17 @@ export default function KnowledgeGraph() {
           )}
 
           {!loading && !error && graphData.nodes.length > 0 && (
-            <ForceGraph2D
+            <ForceGraph3D
               ref={fgRef}
               graphData={graphData}
+              backgroundColor="#030712"
+              nodeResolution={16}
+              linkResolution={6}
+              nodeOpacity={0.9}
+              linkOpacity={0.3}
               nodeLabel="label"
               nodeColor={(node: any) => TYPE_COLORS[node.type] || '#64748b'}
-              nodeCanvasObject={paintNode}
+              
               linkDirectionalParticles={2}
               linkDirectionalParticleWidth={(link: any) => highlightLinks.has(link) || highlightLinks.has(link.id) ? 3 : 0}
               linkColor={(link: any) => highlightLinks.has(link) || highlightLinks.has(link.id) ? '#818cf8' : 'rgba(148, 163, 184, 0.15)'}

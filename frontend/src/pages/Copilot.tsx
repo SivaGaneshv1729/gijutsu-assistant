@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { MermaidRenderer } from '../components/MermaidRenderer';
 import { ModelViewer } from '../components/ModelViewer';
 
-import { Settings, Check, UploadCloud, FileText, Send, Edit, ThumbsDown, Copy, RotateCcw, MessageSquare, Zap, Paperclip, User, Sidebar, X, Mic, Search, Trash2, ThumbsUp, GitBranch, BarChart2, BookOpen, Filter, Cpu, Loader2 } from 'lucide-react';
+import { Settings, Check, UploadCloud, FileText, Send, Edit, ThumbsDown, Copy, RotateCcw, MessageSquare, Zap, Paperclip, User, Sidebar, X, Mic, Volume2, Search, Trash2, ThumbsUp, GitBranch, BarChart2, BookOpen, Filter, Cpu, Loader2 } from 'lucide-react';
 import { listDocuments } from '../services/api';
 import ReactMarkdown from 'react-markdown';
 import KnowledgeGraph from './KnowledgeGraph';
@@ -315,6 +315,17 @@ export default function Copilot() {
       setMessages(prev => [...prev, errorMsg]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSpeak = (text: string) => {
+    if (window.speechSynthesis.speaking) {
+      window.speechSynthesis.cancel();
+    } else {
+      const cleanText = text.replace(/[*#_\[\]]/g, '').replace(/citations/g, '');
+      const utterance = new SpeechSynthesisUtterance(cleanText);
+      utterance.rate = 1.0;
+      window.speechSynthesis.speak(utterance);
     }
   };
 
@@ -646,6 +657,13 @@ export default function Copilot() {
                             </div>
                             {/* Action Row */}
                             <div className="flex items-center gap-3 text-slate-500 mt-1">
+                                <button 
+                                  onClick={() => handleSpeak(msg.content)} 
+                                  className="p-1 hover:text-white transition-colors"
+                                  title="Read Aloud"
+                                >
+                                  <Volume2 size={14} />
+                                </button>
                                 <button 
                                   onClick={() => handleFeedback(msg.id, 'up')} 
                                   className={`transition-colors ${feedback[msg.id] === 'up' ? 'text-blue-500' : 'hover:text-slate-300'}`}
