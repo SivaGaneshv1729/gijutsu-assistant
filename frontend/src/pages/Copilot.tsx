@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { MermaidRenderer } from '../components/MermaidRenderer';
 import { ModelViewer } from '../components/ModelViewer';
 
-import { Settings, Check, UploadCloud, FileText, Send, Edit, ThumbsDown, Copy, RotateCcw, MessageSquare, Zap, Paperclip, User, Sidebar, X, Mic, Volume2, Search, Trash2, ThumbsUp, GitBranch, BarChart2, BookOpen, Filter, Cpu, Loader2 } from 'lucide-react';
+import { Settings, Check, UploadCloud, FileText, Send, Edit, ThumbsDown, Copy, RotateCcw, MessageSquare, Zap, Paperclip, User, Sidebar, X, Mic, Volume2, Search, Trash2, ThumbsUp, GitBranch, BarChart2, BookOpen, Filter, Loader2 } from 'lucide-react';
 import { listDocuments } from '../services/api';
 import ReactMarkdown from 'react-markdown';
 import KnowledgeGraph from './KnowledgeGraph';
@@ -11,7 +11,7 @@ import AdminPanel from './AdminPanel';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useLanguage } from '../contexts/LanguageContext';
 import type { Message, Citation, ChatSession } from '../types';
-import { listSessions, createSession, deleteSession as apiDeleteSession, getSessionMessages, sendChatMessage, getSessionThoughts } from '../services/api';
+import { listSessions, createSession, deleteSession as apiDeleteSession, getSessionMessages, sendChatMessage } from '../services/api';
 
 
 function TypewriterText({ text, onComplete }: { text: string; onComplete?: () => void }) {
@@ -23,21 +23,25 @@ function TypewriterText({ text, onComplete }: { text: string; onComplete?: () =>
   }, [onComplete]);
   
   useEffect(() => {
+    // If the text is very long, skip the animation so it doesn't get boring
+    if (text.length > 300) {
+      setDisplayed(text);
+      if (onCompleteRef.current) onCompleteRef.current();
+      return;
+    }
+
     let i = 0;
     let timeoutId: ReturnType<typeof setTimeout>;
     
     const type = () => {
-      // Dynamic chunk size (base chunk relative to text length, plus random burst)
-      const baseChunk = Math.max(1, Math.floor(text.length / 80));
-      const burst = Math.floor(Math.random() * (baseChunk * 2)) + 1;
+      // Very fast typing for short responses like ChatGPT
+      const burst = Math.floor(Math.random() * 4) + 2; // 2-5 chars per tick
       i += burst;
       
       setDisplayed(text.slice(0, i));
       
       if (i < text.length) {
-        // 10% chance to simulate a network/generation "pause"
-        const isPause = Math.random() < 0.1;
-        const delay = isPause ? Math.random() * 150 + 50 : Math.random() * 20 + 5;
+        const delay = Math.random() * 15 + 10; // 10-25ms per tick
         timeoutId = setTimeout(type, delay);
       } else {
         if (onCompleteRef.current) onCompleteRef.current();
@@ -183,7 +187,7 @@ export default function Copilot() {
   const [feedback, setFeedback] = useState<Record<string, 'up' | 'down' | null>>({});
   const [focusedDocIds, setFocusedDocIds] = useState<string[]>([]);
   const [documents, setDocuments] = useState<any[]>([]);
-  const [thoughts, setThoughts] = useState<any[]>([]);
+  
 
   const handleCopy = (id: string, text: string) => {
     navigator.clipboard.writeText(text);
@@ -211,19 +215,7 @@ export default function Copilot() {
   }, []);
 
   
-  useEffect(() => {
-    let interval: any;
-    if (loading && currentSessionId) {
-      interval = setInterval(() => {
-        getSessionThoughts(currentSessionId)
-        .then(data => setThoughts(data))
-        .catch(() => {});
-      }, 1000);
-    } else {
-      setThoughts([]);
-    }
-    return () => clearInterval(interval);
-  }, [loading, currentSessionId]);
+  
 
   useEffect(() => {
     if (currentSessionId) {
@@ -295,7 +287,7 @@ export default function Copilot() {
         role: 'assistant',
         content: msg.content,
         citations: msg.citationsJson ? JSON.parse(msg.citationsJson) : undefined,
-        isTyping: false 
+        isTyping: msg.content.length <= 300
       };
 
       setMessages(prev => [...prev, aiMsg]);
@@ -310,7 +302,7 @@ export default function Copilot() {
         content: t("chat.systemError") + err.message,
         isError: true,
         query: query,
-        isTyping: false
+        isTyping: true
       };
       setMessages(prev => [...prev, errorMsg]);
     } finally {
@@ -694,36 +686,16 @@ export default function Copilot() {
                 </div>
             ))}
             
-            {loading && thoughts.length > 0 && (
-              <div className="flex mb-6 w-full animate-in fade-in slide-in-from-bottom-2 duration-300">
-                <div className="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center shrink-0 mr-4">
-                  <Cpu size={16} className="text-indigo-400 animate-pulse" />
-                </div>
-                <div className="bg-[#1e1e24] border border-slate-800 rounded-2xl rounded-tl-sm px-5 py-4 w-full shadow-sm">
-                  <div className="text-xs font-semibold text-indigo-400 mb-2 flex items-center gap-2 uppercase tracking-wider">
-                    <Loader2 size={12} className="animate-spin" /> Agentic Analysis
+            {loading && (
+                <div className="flex mb-6 w-full animate-in fade-in slide-in-from-bottom-2 duration-300">
+                  <div className="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center shrink-0 mr-4">
+                    <Loader2 size={16} className="text-indigo-400 animate-spin" />
                   </div>
-                  <div className="space-y-1.5 font-mono text-[11px] text-slate-400">
-                    {thoughts.map((t: any, i: number) => (
-                      <div key={i} className="flex gap-2">
-                        <span className="text-slate-600 shrink-0">[{new Date(t.created_at).toLocaleTimeString()}]</span>
-                        <span className={i === thoughts.length - 1 ? 'text-indigo-300' : ''}>{t.thought}</span>
-                      </div>
-                    ))}
+                  <div className="bg-[#1e1e24] border border-slate-800 rounded-2xl rounded-tl-sm px-5 py-3 shadow-sm flex items-center gap-3 text-sm text-slate-400">
+                     Synthesizing engineering data...
                   </div>
                 </div>
-              </div>
-            )}
-
-            {loading && thoughts.length === 0 && (
-                <div className="w-full flex justify-start">
-                    <div className="flex items-center gap-1.5 h-8">
-                        <div className="w-1.5 h-1.5 rounded-full bg-slate-500 animate-pulse"></div>
-                        <div className="w-1.5 h-1.5 rounded-full bg-slate-500 animate-pulse" style={{ animationDelay: '150ms' }}></div>
-                        <div className="w-1.5 h-1.5 rounded-full bg-slate-500 animate-pulse" style={{ animationDelay: '300ms' }}></div>
-                    </div>
-                </div>
-            )}
+              )}
             <div ref={endOfMessagesRef} className="h-4" />
           </div>
         </div>
