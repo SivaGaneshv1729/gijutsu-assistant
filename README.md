@@ -66,16 +66,9 @@ manufacturing-engineering-intelligence/
 
 ## 📚 Documentation
 
-Full documentation lives in [docs/](docs/README.md):
+The entire platform's technical documentation has been streamlined and consolidated into a single master document:
 
-- [Setup & Quickstart](docs/setup/quickstart.md)
-- [Environment Variables](docs/setup/environment-variables.md)
-- [Troubleshooting](docs/setup/troubleshooting.md)
-- [Architecture Overview](docs/architecture/overview.md)
-- [Data Model](docs/architecture/data-model.md)
-- [Security Model](docs/architecture/security.md)
-- [API Reference](docs/api/api.md)
-- [Demo Script](docs/demo/demo-script.md)
+- [📖 The MEI Technical Manual](docs/TECHNICAL_MANUAL.md) (Includes Setup, Architecture, Data Models, Security, and API Reference)
 
 ## ⚡ Prerequisites
 
